@@ -21,8 +21,8 @@ export function AccountFilters({ filters, groups, onChange, onFindAvailable }: A
 
   return (
     <section className="shrink-0 rounded-[16px] border border-[#DDE3EA] bg-[#FCFDFE]/95 p-2 shadow-[0_12px_34px_rgba(52,64,84,0.05)]" aria-label="筛选账号">
-      <div className="grid gap-2 xl:grid-cols-[minmax(280px,1fr)_auto_150px_150px_auto]">
-        <label className="relative block">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative block w-full xl:flex-1 xl:min-w-[280px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8A93A3]" size={16} />
           <Input
             className="border-transparent bg-[#F3F6F9] pl-9 shadow-none"
@@ -31,7 +31,7 @@ export function AccountFilters({ filters, groups, onChange, onFindAvailable }: A
             value={filters.query}
           />
         </label>
-        <div className="grid grid-cols-4 rounded-lg bg-[#EEF2F6] p-1">
+        <div className="w-full grid grid-cols-4 rounded-lg bg-[#EEF2F6] p-1 xl:w-auto">
           {statusItems.map((item) => (
             <button
               className={cn(
@@ -46,7 +46,7 @@ export function AccountFilters({ filters, groups, onChange, onFindAvailable }: A
             </button>
           ))}
         </div>
-        <Select className="border-transparent bg-[#F3F6F9]" onChange={(event) => onChange({ groupId: event.target.value })} value={filters.groupId}>
+        <Select className="flex-1 border-transparent bg-[#F3F6F9] xl:w-[150px] xl:flex-none" onChange={(event) => onChange({ groupId: event.target.value })} value={filters.groupId}>
           <option value="all">全部小组</option>
           {groups.map((group) => (
             <option key={group.id} value={group.id}>
@@ -55,7 +55,7 @@ export function AccountFilters({ filters, groups, onChange, onFindAvailable }: A
           ))}
         </Select>
         <Select
-          className="border-transparent bg-[#F3F6F9]"
+          className="flex-1 border-transparent bg-[#F3F6F9] xl:w-[150px] xl:flex-none"
           onChange={(event) => onChange({ renewal: event.target.value as AccountFiltersState['renewal'] })}
           value={filters.renewal}
         >
@@ -63,7 +63,7 @@ export function AccountFilters({ filters, groups, onChange, onFindAvailable }: A
           <option value="7d">7天内</option>
           <option value="30d">30天内</option>
         </Select>
-        <Button className="justify-center rounded-lg px-4" onClick={onFindAvailable} type="button" variant="primary">
+        <Button className="w-full justify-center rounded-lg px-4 xl:w-auto" onClick={onFindAvailable} type="button" variant="primary">
           <Wand2 size={15} />
           找可用
         </Button>

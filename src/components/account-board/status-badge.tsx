@@ -9,19 +9,42 @@ type StatusBadgeProps = {
 export function StatusBadge({ row, now }: StatusBadgeProps) {
   if (row.runtime.kind === 'in_use' && row.current) {
     return (
-      <div className="grid gap-1">
-        <Badge tone="blue">使用中</Badge>
-        <span className="font-mono text-[13px] tabular-nums text-[#667085]">
-          {formatBookingRange(row.current.startTime, row.current.endTime, now)} · 余 {formatRemain(row.current.endTime, now)}
+      <div className="grid w-full max-w-[215px] gap-1.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <Badge className="shrink-0" tone="blue">
+            使用中
+          </Badge>
+          <span className="min-w-0 truncate font-mono text-[13px] leading-5 tabular-nums text-[#4F5F77]">
+            {formatBookingRange(row.current.startTime, row.current.endTime, now)}
+          </span>
+        </div>
+        <span className="font-mono text-[13px] leading-5 tabular-nums text-[#667085]">余 {formatRemain(row.current.endTime, now)}</span>
+      </div>
+    );
+  }
+
+  if (row.next) {
+    return (
+      <div className="grid w-full max-w-[215px] gap-1.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <Badge className="shrink-0" tone="green">
+            空闲
+          </Badge>
+          <span className="min-w-0 truncate font-mono text-[13px] leading-5 tabular-nums text-[#4F5F77]">现在可用</span>
+        </div>
+        <span className="truncate font-mono text-[13px] leading-5 tabular-nums text-[#667085]">
+          下次 {formatBookingRange(row.next.startTime, row.next.endTime, now)}
         </span>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-1">
-      <Badge tone="green">空闲</Badge>
-      <span className="font-mono text-[13px] tabular-nums text-[#667085]">现在可用</span>
+    <div className="flex w-full max-w-[215px] items-center gap-2">
+      <Badge className="shrink-0" tone="green">
+        空闲
+      </Badge>
+      <span className="font-mono text-[13px] leading-5 tabular-nums text-[#667085]">现在可用</span>
     </div>
   );
 }

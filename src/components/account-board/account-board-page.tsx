@@ -60,8 +60,8 @@ export function AccountBoardPage() {
   }, [activeSection, developerIndex]);
 
   return (
-    <div className="h-screen overflow-hidden bg-[#F6F7F9] text-[#202329]">
-      <div className="relative mx-auto flex h-full w-full max-w-[1440px] gap-4 px-4 py-4 lg:px-6">
+    <div className="bg-[#F6F7F9] text-[#202329] lg:h-screen lg:overflow-hidden">
+      <div className="relative mx-auto flex w-full max-w-[1440px] gap-4 px-4 py-4 lg:h-full lg:px-6">
         <aside className="hidden w-[76px] shrink-0 lg:block">
           <div className="sticky top-4 flex h-[calc(100vh-2rem)] flex-col items-center rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] p-3 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#1C2430] text-sm font-semibold text-white">AM</div>
@@ -76,7 +76,7 @@ export function AccountBoardPage() {
           </div>
         </aside>
 
-          <main className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-4', (activeSection === 'accounts' || activeSection === 'projects') ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden')}>
+          <main className={cn('flex min-w-0 flex-1 flex-col gap-4', (activeSection === 'accounts' || activeSection === 'projects') ? 'lg:min-h-0 lg:overflow-y-auto lg:overflow-x-hidden' : 'lg:min-h-0 lg:overflow-hidden')}>
           <header className="shrink-0 rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] px-5 py-4 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
@@ -484,7 +484,7 @@ function saveAccountDraft(account: Account, draft: AccountDraftState, onSave: Bo
 
 function MemberGroupsPanel({ developerMode, model }: { developerMode: boolean; model: BoardModel }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+    <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:overflow-hidden">
       <section className="shrink-0 overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
         <div className="flex items-center justify-between border-b border-[#EEF2F6] px-5 py-3">
           <h2 className="text-sm font-semibold text-[#171A1F]">小组概览</h2>
@@ -498,7 +498,7 @@ function MemberGroupsPanel({ developerMode, model }: { developerMode: boolean; m
       </section>
 
       {developerMode ? (
-        <section className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(320px,0.8fr)_minmax(520px,1.2fr)]">
+        <section className="grid gap-4 lg:min-h-0 lg:flex-1 xl:grid-cols-[minmax(320px,0.8fr)_minmax(520px,1.2fr)]">
           <GroupEditorSection model={model} />
           <MemberEditorSection model={model} />
         </section>
@@ -544,7 +544,7 @@ function GroupEditorSection({ model }: { model: BoardModel }) {
   }
 
   return (
-    <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
+    <section className="flex flex-col overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)] lg:min-h-0">
       <div className="flex items-center justify-between border-b border-[#E6EAF0] bg-[#FCFDFE] px-5 py-4">
         <h2 className="text-base font-semibold text-[#171A1F]">小组编辑</h2>
         <span className="font-mono text-sm tabular-nums text-[#667085]">{model.groups.length} 个小组</span>
@@ -560,7 +560,7 @@ function GroupEditorSection({ model }: { model: BoardModel }) {
         </div>
         {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{error}</div> : null}
       </div>
-      <div className="grid min-h-0 flex-1 divide-y divide-[#EEF2F6] overflow-y-auto">
+      <div className="grid divide-y divide-[#EEF2F6] lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         {model.groups.map((group) => (
           <GroupEditor group={group} key={group.id} onDelete={model.deleteGroup} onSave={model.updateGroup} />
         ))}
@@ -633,7 +633,7 @@ function MemberEditorSection({ model }: { model: BoardModel }) {
   }
 
   return (
-    <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
+    <section className="flex flex-col overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)] lg:min-h-0">
       <div className="flex items-center justify-between border-b border-[#E6EAF0] bg-[#FCFDFE] px-5 py-4">
         <h2 className="text-base font-semibold text-[#171A1F]">成员编辑</h2>
         <span className="font-mono text-sm tabular-nums text-[#667085]">{model.activeUsers.length} 位成员</span>
@@ -652,7 +652,7 @@ function MemberEditorSection({ model }: { model: BoardModel }) {
         </div>
         {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{error}</div> : null}
       </div>
-      <div className="grid min-h-0 flex-1 divide-y divide-[#EEF2F6] overflow-y-scroll [scrollbar-gutter:stable]">
+      <div className="grid divide-y divide-[#EEF2F6] lg:min-h-0 lg:flex-1 lg:overflow-y-scroll lg:[scrollbar-gutter:stable]">
         {model.users.map((user) => (
           <MemberEditor groups={model.activeGroups} key={user.id} onDelete={model.deleteUser} onSave={model.updateUser} user={user} />
         ))}
