@@ -1,8 +1,8 @@
 import { LayoutDashboard, Settings, Trash2, UsersRound, FolderOpen } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAccountsViewModel, type AccountDraftState } from '../../hooks/useAccountsViewModel';
 import { boardSections, getBoardSectionMeta, type BoardSection } from '../../lib/board-navigation';
-import { advanceDeveloperSequence, canUseDeveloperShortcut, normalizeDeveloperKey } from '../../lib/developer-mode';
+import { advanceDeveloperSequence, advanceDeveloperTapCount, canUseDeveloperShortcut, normalizeDeveloperKey } from '../../lib/developer-mode';
 import { type Account, type Group, type User } from '../../lib/runway-board';
 import { cn } from '../../lib/utils';
 import { AccountFilters } from './account-filters';
@@ -27,6 +27,7 @@ export function AccountBoardPage() {
   const model = useAccountsViewModel();
   const [activeSection, setActiveSection] = useState<BoardSection>('board');
   const [developerIndex, setDeveloperIndex] = useState(0);
+  const developerTapCountRef = useRef(0);
   const [developerMode, setDeveloperMode] = useState(false);
   const activeMeta = getBoardSectionMeta(activeSection);
 
@@ -58,6 +59,18 @@ export function AccountBoardPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeSection, developerIndex]);
+
+  function handleDeveloperTap() {
+    if (activeSection !== 'accounts' || developerMode) {
+      return;
+    }
+
+    const result = advanceDeveloperTapCount(developerTapCountRef.current);
+    developerTapCountRef.current = result.count;
+    if (result.unlocked) {
+      setDeveloperMode(true);
+    }
+  }
 
   return (
     <div className="min-h-dvh bg-[#F6F7F9] text-[#202329] lg:h-screen lg:min-h-0 lg:overflow-hidden">
@@ -147,7 +160,7 @@ export function AccountBoardPage() {
               rows={model.view.rows}
             />
           ) : null}
-          {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} /> : null}
+          {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} onDeveloperTap={handleDeveloperTap} /> : null}
           {activeSection === 'groups' ? <MemberGroupsPanel developerMode={developerMode} model={model} /> : null}
           {activeSection === 'projects' ? <ProjectsPanel developerMode={developerMode} model={model} /> : null}
         </main>
@@ -224,10 +237,10 @@ function RailButton({ active, section, onClick }: { active: boolean; section: Bo
   );
 }
 
-function SiteSettingsPanel({ developerMode, model }: { developerMode: boolean; model: BoardModel }) {
+function SiteSettingsPanel({ developerMode, model, onDeveloperTap }: { developerMode: boolean; model: BoardModel; onDeveloperTap: () => void }) {
   return (
     <div className="grid gap-4">
-      <AccountPoolSummary model={model} />
+      <AccountPoolSummary model={model} onDeveloperTap={onDeveloperTap} />
 
       {developerMode ? <AccountEditorSection model={model} /> : null}
     </div>
@@ -314,7 +327,7 @@ function ProjectsPanel({ developerMode, model }: { developerMode: boolean; model
   );
 }
 
-function AccountPoolSummary({ model }: { model: BoardModel }) {
+function AccountPoolSummary({ model, onDeveloperTap }: { model: BoardModel; onDeveloperTap: () => void }) {
   const activeAccounts = model.accounts.filter((account) => account.isActive).length;
 
   return (
@@ -326,7 +339,7 @@ function AccountPoolSummary({ model }: { model: BoardModel }) {
         <div className="font-mono text-sm tabular-nums text-[#667085]">Runway Unlimited / $95</div>
       </div>
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
-        <ReadonlySetting label="账号总数" value={`${model.accounts.length} 个`} />
+        <ReadonlySetting label="账号总数" value={`${model.accounts.length} 个`} onClick={onDeveloperTap} />
         <ReadonlySetting label="启用账号" value={`${activeAccounts} 个`} />
         <ReadonlySetting label="使用中" value={`${model.view.stats.inUse} 个`} />
         <ReadonlySetting label="7天内续费" value={`${model.view.stats.renewalSoon} 个`} />
@@ -439,9 +452,20 @@ function AccountCreator({ getDefaultDraft, onCreate }: { getDefaultDraft: BoardM
   );
 }
 
-function ReadonlySetting({ label, value }: { label: string; value: string }) {
+function ReadonlySetting({ label, value, onClick }: { label: string; value: string; onClick?: () => void }) {
+  const className = "rounded-xl bg-[#F7F9FB] p-4 text-left";
+
+  if (onClick) {
+    return (
+      <button className={className} onClick={onClick} type="button">
+        <span className="block text-sm text-[#667085]">{label}</span>
+        <span className="mt-2 block font-mono text-xl font-semibold tabular-nums text-[#1E232B]">{value}</span>
+      </button>
+    );
+  }
+
   return (
-    <div className="rounded-xl bg-[#F7F9FB] p-4">
+    <div className={className}>
       <div className="text-sm text-[#667085]">{label}</div>
       <div className="mt-2 font-mono text-xl font-semibold tabular-nums text-[#1E232B]">{value}</div>
     </div>

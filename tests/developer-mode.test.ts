@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advanceDeveloperSequence, canUseDeveloperShortcut, developerSequence, normalizeDeveloperKey } from '../src/lib/developer-mode';
+import { advanceDeveloperTapCount, advanceDeveloperSequence, canUseDeveloperShortcut, developerSequence, normalizeDeveloperKey } from '../src/lib/developer-mode';
 
 describe('developer mode sequence', () => {
   it('normalizes arrow keys and letter keys', () => {
@@ -36,5 +36,19 @@ describe('developer mode sequence', () => {
     expect(canUseDeveloperShortcut('accounts')).toBe(true);
     expect(canUseDeveloperShortcut('board')).toBe(false);
     expect(canUseDeveloperShortcut('groups')).toBe(false);
+  });
+
+  it('unlocks after seven taps on the settings summary trigger', () => {
+    let count = 0;
+    let unlocked = false;
+
+    for (let i = 0; i < 7; i += 1) {
+      const result = advanceDeveloperTapCount(count);
+      count = result.count;
+      unlocked = result.unlocked;
+    }
+
+    expect(unlocked).toBe(true);
+    expect(count).toBe(0);
   });
 });
