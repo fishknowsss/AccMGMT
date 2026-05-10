@@ -136,7 +136,7 @@ export function AccountBoardPage() {
           ) : null}
           {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} /> : null}
           {activeSection === 'groups' ? <MemberGroupsPanel developerMode={developerMode} model={model} /> : null}
-          {activeSection === 'projects' ? <ProjectsPanel model={model} /> : null}
+          {activeSection === 'projects' ? <ProjectsPanel developerMode={developerMode} model={model} /> : null}
         </main>
       </div>
 
@@ -221,7 +221,7 @@ function SiteSettingsPanel({ developerMode, model }: { developerMode: boolean; m
   );
 }
 
-function ProjectsPanel({ model }: { model: BoardModel }) {
+function ProjectsPanel({ developerMode, model }: { developerMode: boolean; model: BoardModel }) {
   const { projects } = model;
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -256,7 +256,7 @@ function ProjectsPanel({ model }: { model: BoardModel }) {
         <ul className="divide-y divide-[#EEF2F6]">
           {projects.map((p) => (
             <li className="flex items-center gap-2 px-5 py-3" key={p}>
-              {editing === p ? (
+              {developerMode && editing === p ? (
                 <>
                   <input
                     autoFocus
@@ -274,16 +274,20 @@ function ProjectsPanel({ model }: { model: BoardModel }) {
               ) : (
                 <>
                   <span className="flex-1 text-sm text-[#344154]">{p}</span>
-                  <Button aria-label="编辑项目" onClick={() => startEdit(p)} size="icon" type="button" variant="ghost">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                      <path d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 16.5H9v-3.5z" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </Button>
-                  <Button aria-label="删除项目" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={() => void handleDelete(p)} size="icon" type="button" variant="ghost">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                      <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 0h8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </Button>
+                  {developerMode ? (
+                    <>
+                      <Button aria-label="编辑项目" onClick={() => startEdit(p)} size="icon" type="button" variant="ghost">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                          <path d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 16.5H9v-3.5z" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </Button>
+                      <Button aria-label="删除项目" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={() => void handleDelete(p)} size="icon" type="button" variant="ghost">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                          <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 0h8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </Button>
+                    </>
+                  ) : null}
                 </>
               )}
             </li>

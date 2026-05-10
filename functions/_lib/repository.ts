@@ -221,7 +221,7 @@ export function createRepository(db: D1Database): D1Repository {
 
     async deleteProject(name) {
       const result = await db
-        .prepare('UPDATE bookings SET project_name = NULL WHERE project_name = ?1')
+        .prepare("UPDATE bookings SET project_name = '' WHERE project_name = ?1")
         .bind(name)
         .run();
       return getChangedRows(result);

@@ -434,7 +434,9 @@ export function useAccountsViewModel() {
   }
 
   async function deleteGroup(groupId: string): Promise<{ ok: true } | { ok: false; reason: string }> {
-    const validation = validateGroupDeletion(groupId, users, bookings);
+    const nowIso = now.toISOString();
+    const futureBookings = bookings.filter((b) => b.status === 'confirmed' && b.endTime > nowIso);
+    const validation = validateGroupDeletion(groupId, users, futureBookings);
     if (!validation.ok) {
       return { ok: false, reason: validation.reason };
     }
