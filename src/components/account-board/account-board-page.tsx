@@ -130,6 +130,7 @@ export function AccountBoardPage() {
               now={model.now}
               onRelease={(row) => row.current && model.releaseBooking(row.current)}
               onReserve={model.openBooking}
+              onCopyEmail={model.copyAccountEmail}
               onUseNow={model.openUseNow}
               rows={model.view.rows}
             />
@@ -162,6 +163,8 @@ export function AccountBoardPage() {
           users={model.activeUsers}
         />
       ) : null}
+
+      {model.toast ? <FloatingToast message={model.toast} /> : null}
     </div>
   );
 }
@@ -173,6 +176,16 @@ function BoardLoadingState() {
     <section className="rounded-2xl border border-[#DDE3EA] bg-white px-5 py-10 text-center shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
       <div className="text-base font-medium text-[#344154]">正在加载账号池。</div>
     </section>
+  );
+}
+
+function FloatingToast({ message }: { message: string }) {
+  return (
+    <div className="pointer-events-none fixed left-1/2 top-1/2 z-[70] -translate-x-1/2 -translate-y-1/2">
+      <div className="toast-pop rounded-xl border border-[#D7E3F6] bg-[#F7FBFF] px-4 py-2 text-sm font-medium text-[#315D92] shadow-[0_16px_42px_rgba(49,93,146,0.18)]">
+        {message}
+      </div>
+    </div>
   );
 }
 

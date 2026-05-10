@@ -12,7 +12,7 @@ describe('board navigation', () => {
   });
 
   it('returns concise Chinese labels for every section', () => {
-    expect(getBoardSectionMeta('board').label).toBe('Runway 看板');
+    expect(getBoardSectionMeta('board').label).toBe('账号使用与管理面板');
     expect(getBoardSectionMeta('accounts').label).toBe('账号设置');
     expect(getBoardSectionMeta('groups').label).toBe('成员小组');
   });

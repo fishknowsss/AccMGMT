@@ -75,6 +75,7 @@ export function useAccountsViewModel() {
   const [filters, setFilters] = useState<AccountFiltersState>(emptyFilters);
   const [now, setNow] = useState(() => new Date());
   const [notice, setNotice] = useState('');
+  const [toast, setToast] = useState('');
   const [useNowForm, setUseNowForm] = useState<UseNowFormState | null>(null);
   const [bookingForm, setBookingForm] = useState<BookingFormState | null>(null);
 
@@ -114,6 +115,15 @@ export function useAccountsViewModel() {
       cancelled = true;
     };
   }, [snapshot]);
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setToast(''), 1600);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   const activeUsers = useMemo(() => getActiveUsers(users), [users]);
   const activeGroups = useMemo(() => getActiveGroups(groups, users), [groups, users]);
@@ -294,6 +304,15 @@ export function useAccountsViewModel() {
     setNotice(`已找到 ${account.label}。`);
   }
 
+  async function copyAccountEmail(email: string) {
+    try {
+      await navigator.clipboard.writeText(email);
+      setToast('账号邮箱已复制。');
+    } catch {
+      setToast('复制失败，请手动复制。');
+    }
+  }
+
   async function updateAccount(accountId: string, next: Partial<Pick<Account, 'email' | 'label' | 'renewalDate' | 'isActive'>>) {
     const account = accounts.find((item) => item.id === accountId);
     if (!account) {
@@ -470,6 +489,7 @@ export function useAccountsViewModel() {
     filters,
     view,
     notice,
+    toast,
     useNowForm,
     bookingForm,
     accountById,
@@ -482,6 +502,7 @@ export function useAccountsViewModel() {
     submitBooking,
     releaseBooking,
     findAvailableAccount,
+    copyAccountEmail,
     updateAccount,
     createAccount,
     createGroup,

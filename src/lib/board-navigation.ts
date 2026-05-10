@@ -7,7 +7,7 @@ export type BoardSectionMeta = {
 };
 
 export const boardSections: BoardSectionMeta[] = [
-  { id: 'board', label: 'Runway 看板', shortLabel: '看板' },
+  { id: 'board', label: '账号使用与管理面板', shortLabel: '看板' },
   { id: 'accounts', label: '账号设置', shortLabel: '账号' },
   { id: 'groups', label: '成员小组', shortLabel: '小组' },
 ];

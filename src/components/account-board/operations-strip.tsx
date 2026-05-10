@@ -11,28 +11,25 @@ export function OperationsStrip({ stats }: OperationsStripProps) {
   const idlePercent = 100 - occupancy;
 
   return (
-    <section className="shrink-0 overflow-hidden rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] shadow-[0_14px_34px_rgba(52,64,84,0.06)]" aria-label="账号概览">
-      <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="border-b border-[#E6EAF0] p-5 lg:border-b-0 lg:border-r">
-          <div className="mb-5 flex items-center justify-between gap-4">
+    <section className="shrink-0 overflow-hidden rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] shadow-[0_10px_26px_rgba(52,64,84,0.05)]" aria-label="账号概览">
+      <div className="grid gap-0 lg:grid-cols-[minmax(360px,1fr)_minmax(520px,1.2fr)]">
+        <div className="border-b border-[#E6EAF0] px-4 py-3 lg:border-b-0 lg:border-r">
+          <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#E8EDF3] text-[#344154]">
-                <Activity size={17} />
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#E8EDF3] text-[#344154]">
+                <Activity size={16} />
               </span>
-              <div>
-                <h2 className="text-base font-semibold text-[#171A1F]">当前占用</h2>
-                <p className="mt-0.5 text-sm text-[#667085]">Runway Unlimited / $95</p>
-              </div>
+              <h2 className="text-base font-semibold text-[#171A1F]">当前占用</h2>
             </div>
-            <strong className="font-mono text-3xl font-semibold tabular-nums text-[#171A1F]">{occupancy}%</strong>
+            <strong className="font-mono text-[26px] font-semibold leading-none tabular-nums text-[#171A1F]">{occupancy}%</strong>
           </div>
-          <div className="h-3 overflow-hidden rounded-full bg-[#E8EDF3]">
+          <div className="h-2 overflow-hidden rounded-full bg-[#E8EDF3]">
             <div className="flex h-full w-full">
               <span className="h-full bg-[#86A9D6]" style={{ width: `${occupancy}%` }} />
               <span className="h-full bg-[#A7CBB5]" style={{ width: `${idlePercent}%` }} />
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-4 text-sm text-[#4F5968]">
+          <div className="mt-2 flex items-center gap-4 text-sm text-[#4F5968]">
             <span className="inline-flex items-center gap-1.5">
               <i className="h-2 w-2 rounded-full bg-[#86A9D6]" />
               使用中 {stats.inUse}
@@ -44,7 +41,7 @@ export function OperationsStrip({ stats }: OperationsStripProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 divide-x divide-y divide-[#E6EAF0] lg:divide-y-0">
+        <div className="grid grid-cols-2 divide-x divide-y divide-[#E6EAF0] sm:grid-cols-4 sm:divide-y-0">
           <Metric icon={CircleCheck} label="空闲账号" value={stats.idle} />
           <Metric icon={Clock3} label="使用中" value={stats.inUse} />
           <Metric icon={CalendarCheck} label="今日预约" value={stats.todayBookings} />
@@ -57,12 +54,12 @@ export function OperationsStrip({ stats }: OperationsStripProps) {
 
 function Metric({ icon: Icon, label, value }: { icon: typeof CircleCheck; label: string; value: number }) {
   return (
-    <article className="min-h-[110px] bg-white/60 p-4">
-      <div className="mb-4 flex items-center justify-between">
+    <article className="min-h-[82px] bg-white/60 px-4 py-3">
+      <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-medium text-[#667085]">{label}</span>
-        <Icon className="text-[#7A8595]" size={16} />
+        <Icon className="text-[#7A8595]" size={15} />
       </div>
-      <strong className="font-mono text-3xl font-semibold tabular-nums text-[#1E232B]">{value}</strong>
+      <strong className="font-mono text-[26px] font-semibold leading-none tabular-nums text-[#1E232B]">{value}</strong>
     </article>
   );
 }
