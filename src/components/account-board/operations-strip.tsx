@@ -11,7 +11,7 @@ export function OperationsStrip({ stats }: OperationsStripProps) {
   const idlePercent = 100 - occupancy;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] shadow-[0_14px_34px_rgba(52,64,84,0.06)]" aria-label="账号概览">
+    <section className="shrink-0 overflow-hidden rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] shadow-[0_14px_34px_rgba(52,64,84,0.06)]" aria-label="账号概览">
       <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="border-b border-[#E6EAF0] p-5 lg:border-b-0 lg:border-r">
           <div className="mb-5 flex items-center justify-between gap-4">

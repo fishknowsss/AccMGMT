@@ -20,7 +20,7 @@ export function AccountFilters({ filters, groups, onChange, onFindAvailable }: A
   ];
 
   return (
-    <section className="rounded-[16px] border border-[#DDE3EA] bg-[#FCFDFE]/95 p-2 shadow-[0_12px_34px_rgba(52,64,84,0.05)]" aria-label="筛选账号">
+    <section className="shrink-0 rounded-[16px] border border-[#DDE3EA] bg-[#FCFDFE]/95 p-2 shadow-[0_12px_34px_rgba(52,64,84,0.05)]" aria-label="筛选账号">
       <div className="grid gap-2 xl:grid-cols-[minmax(280px,1fr)_auto_150px_150px_auto]">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8A93A3]" size={16} />

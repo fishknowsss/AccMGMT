@@ -75,7 +75,7 @@ export function AccountBoardPage() {
           </div>
         </aside>
 
-        <main className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-4', activeSection === 'groups' ? 'overflow-hidden' : 'overflow-y-auto overflow-x-hidden')}>
+        <main className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-4', activeSection === 'accounts' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden')}>
           <header className="shrink-0 rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] px-5 py-4 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
