@@ -73,10 +73,10 @@ export function mapCloudSnapshot(snapshot: CloudSnapshot): BoardSnapshot {
   const users: User[] = snapshot.users.map(mapCloudUser);
   const groups: Group[] = snapshot.groups.map((g) => ({ id: g.id, name: g.name, isActive: g.isActive ?? true }));
 
-  for (const booking of snapshot.bookings) {
-    ensureGroup(groups, booking.groupName);
-    ensureUser(users, groups, booking.userName, booking.groupName);
-  }
+  // 不从 booking 文本字段合成虚拟小组/成员——
+  // 合成对象只存在于本地状态，D1 没有对应记录，
+  // 导致小组删除后从历史 booking 重建，以及成员更新时 API 返回 404。
+  // groups/users 只保留数据库中真实存在的记录。
 
   return {
     accounts: snapshot.accounts.map((account, index) => ({
@@ -271,34 +271,6 @@ async function readErrorMessage(response: Response): Promise<string> {
   } catch {
     return '操作失败';
   }
-}
-
-function ensureGroup(groups: Group[], name: string): Group {
-  const existing = groups.find((group) => group.name === name);
-  if (existing) {
-    return existing;
-  }
-
-  const group = { id: `group-${slugId(name)}`, name };
-  groups.push(group);
-  return group;
-}
-
-function ensureUser(users: User[], groups: Group[], name: string, groupName: string): User {
-  const existing = users.find((user) => user.name === name);
-  if (existing) {
-    return existing;
-  }
-
-  const group = ensureGroup(groups, groupName);
-  const user = {
-    id: `user-${slugId(name)}`,
-    name,
-    email: `${slugId(name)}@studio.local`,
-    groupId: group.id,
-  };
-  users.push(user);
-  return user;
 }
 
 function findUserId(users: User[], name: string): string {
