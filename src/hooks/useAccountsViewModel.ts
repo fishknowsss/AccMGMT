@@ -57,8 +57,9 @@ const currentUserStorageKey = 'accmgmt.currentUserId';
 
 export function useAccountsViewModel() {
   const [snapshot] = useState(() => createMockSnapshot());
-  const [accounts, setAccounts] = useState<Account[]>(snapshot.accounts);
-  const [bookings, setBookings] = useState<Booking[]>(snapshot.bookings);
+  const [isLoading, setIsLoading] = useState(true);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers] = useState<User[]>(snapshot.users);
   const [groups, setGroups] = useState(snapshot.groups);
   const [currentUserId, setCurrentUserIdState] = useState(() => readStoredCurrentUserId() ?? snapshot.currentUser.id);
@@ -86,6 +87,7 @@ export function useAccountsViewModel() {
         setBookings(cloudSnapshot.bookings);
         setUsers(cloudSnapshot.users);
         setGroups(cloudSnapshot.groups);
+        setIsLoading(false);
         setCurrentUserIdState((current) => {
           const next = cloudSnapshot.users.some((user) => user.id === current) ? current : cloudSnapshot.currentUser.id;
           persistCurrentUserId(next);
@@ -93,7 +95,16 @@ export function useAccountsViewModel() {
         });
       })
       .catch(() => {
-        // Local Vite preview can run without Pages Functions.
+        if (cancelled) {
+          return;
+        }
+
+        setAccounts(snapshot.accounts);
+        setBookings(snapshot.bookings);
+        setUsers(snapshot.users);
+        setGroups(snapshot.groups);
+        setCurrentUserIdState(snapshot.currentUser.id);
+        setIsLoading(false);
       });
 
     return () => {
@@ -383,6 +394,7 @@ export function useAccountsViewModel() {
     groups,
     currentUser,
     currentUserId: currentUser.id,
+    isLoading,
     now,
     filters,
     view,

@@ -115,15 +115,19 @@ export function AccountBoardPage() {
           </div>
 
           {activeSection === 'board' ? (
-            <>
+            model.isLoading ? (
+              <BoardLoadingState />
+            ) : (
+              <>
               <OperationsStrip stats={model.view.stats} />
               <AccountFilters filters={model.filters} groups={model.groups} onChange={model.updateFilters} onFindAvailable={model.findAvailableAccount} />
-            </>
+              </>
+            )
           ) : null}
 
           {model.notice ? <div className="rounded-xl border border-[#D7E3F6] bg-[#EEF5FF] px-4 py-3 text-sm text-[#315D92]">{model.notice}</div> : null}
 
-          {activeSection === 'board' ? (
+          {activeSection === 'board' && !model.isLoading ? (
             <AccountTable
               now={model.now}
               onRelease={(row) => row.current && model.releaseBooking(row.current)}
@@ -165,6 +169,14 @@ export function AccountBoardPage() {
 }
 
 type BoardModel = ReturnType<typeof useAccountsViewModel>;
+
+function BoardLoadingState() {
+  return (
+    <section className="rounded-[18px] border border-[#DDE3EA] bg-white px-5 py-10 text-center shadow-[0_18px_44px_rgba(52,64,84,0.07)]">
+      <div className="text-base font-medium text-[#344154]">正在加载账号池。</div>
+    </section>
+  );
+}
 
 function MemberSwitcher({ model }: { model: BoardModel }) {
   const currentGroup = model.groups.find((group) => group.id === model.currentUser.groupId);
