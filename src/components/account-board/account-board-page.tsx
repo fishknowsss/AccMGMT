@@ -60,8 +60,8 @@ export function AccountBoardPage() {
   }, [activeSection, developerIndex]);
 
   return (
-    <div className="bg-[#F6F7F9] text-[#202329] lg:h-screen lg:overflow-hidden">
-      <div className="relative mx-auto flex w-full max-w-[1440px] gap-4 px-4 py-4 lg:h-full lg:px-6">
+    <div className="min-h-dvh bg-[#F6F7F9] text-[#202329] lg:h-screen lg:min-h-0 lg:overflow-hidden">
+      <div className="relative mx-auto flex w-full max-w-[1440px] gap-4 px-3 py-3 pb-6 sm:px-4 sm:py-4 lg:h-full lg:px-6 lg:pb-4">
         <aside className="hidden w-[76px] shrink-0 lg:block">
           <div className="sticky top-4 flex h-[calc(100vh-2rem)] flex-col items-center rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] p-3 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#1C2430] text-sm font-semibold text-white">AM</div>
@@ -76,15 +76,15 @@ export function AccountBoardPage() {
           </div>
         </aside>
 
-          <main className={cn('flex min-w-0 flex-1 flex-col gap-4', (activeSection === 'accounts' || activeSection === 'projects') ? 'lg:min-h-0 lg:overflow-y-auto lg:overflow-x-hidden' : 'lg:min-h-0 lg:overflow-hidden')}>
+          <main className={cn('flex min-w-0 flex-1 flex-col gap-3 sm:gap-4', (activeSection === 'accounts' || activeSection === 'projects') ? 'lg:min-h-0 lg:overflow-y-auto lg:overflow-x-hidden' : 'lg:min-h-0 lg:overflow-hidden')}>
           <header className="shrink-0 rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
             {/* Mobile: compact single row */}
-            <div className="flex items-center justify-between px-4 py-3 lg:hidden">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 lg:hidden">
+              <div className="flex min-w-0 items-center gap-2">
                 <h1 className="text-[17px] font-semibold leading-tight text-[#15171B]">{activeMeta.label}</h1>
                 {developerMode ? <span className="rounded-md bg-[#1C2430] px-1.5 py-0.5 text-xs font-medium text-white">编辑模式</span> : null}
               </div>
-              <div className="rounded-lg bg-[#F2F5F8] px-2.5 py-1.5 font-mono text-xs tabular-nums text-[#344154]">
+              <div className="shrink-0 rounded-lg bg-[#F2F5F8] px-2.5 py-1.5 font-mono text-xs tabular-nums text-[#344154]">
                 <time dateTime={model.now.toISOString()}>{formatDateTime(model.now)}</time>
               </div>
             </div>
@@ -109,7 +109,7 @@ export function AccountBoardPage() {
           </header>
 
           <div className="grid shrink-0 gap-4 lg:hidden">
-            <nav className="flex gap-2 overflow-x-auto" aria-label="主导航">
+            <nav className="-mx-3 flex gap-2 overflow-x-auto px-3" aria-label="主导航">
               {boardSections.map((item) => (
                 <button
                   className={cn(

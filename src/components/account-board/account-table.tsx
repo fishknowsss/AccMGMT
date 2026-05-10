@@ -23,8 +23,7 @@ export function AccountTable({ rows, now, onUseNow, onReserve, onCopyEmail, onRe
         <span className="font-mono text-sm tabular-nums text-[#667085]">{rows.length} 个账号</span>
       </div>
 
-      {/* 移动端：卡片列表 */}
-      <div className="lg:hidden overflow-y-auto">
+      <div className="lg:hidden">
         {rows.length === 0 ? (
           <div className="px-4 py-10 text-center text-sm text-[#667080]">调整筛选条件。</div>
         ) : (
@@ -44,7 +43,6 @@ export function AccountTable({ rows, now, onUseNow, onReserve, onCopyEmail, onRe
         )}
       </div>
 
-      {/* 桌面端：表格 */}
       <div className="hidden min-h-0 flex-1 overflow-auto lg:block">
         <table className="w-full min-w-[1180px] border-collapse text-left">
           <thead className="sticky top-0 z-10">
@@ -150,7 +148,6 @@ function AccountCard({ row, now, onUseNow, onReserve, onCopyEmail, onRelease }: 
   return (
     <div className="relative px-4 py-4">
       <span className={`absolute left-0 top-4 h-10 w-[3px] rounded-r-full ${getAccountAccentClass(row)}`} />
-      {/* 顶部行：编号 + 邮箱 + 状态 */}
       <div className="mb-3 flex min-w-0 items-center gap-3">
         <span className="grid h-8 w-11 shrink-0 place-items-center rounded-lg border border-[#DDE3EA] bg-[#F7F9FB] font-mono text-xs font-semibold tabular-nums text-[#344154]">
           {row.account.label}
@@ -162,10 +159,11 @@ function AccountCard({ row, now, onUseNow, onReserve, onCopyEmail, onRelease }: 
         >
           <span className="block truncate text-[15px] font-medium text-[#202329]">{row.account.email}</span>
         </button>
+      </div>
+      <div className="mb-3">
         <StatusBadge now={now} row={row} />
       </div>
 
-      {/* 当前使用信息 */}
       {row.current ? (
         <div className="mb-3 rounded-lg bg-[#EEF4FF] px-3 py-2 text-sm">
           <span className="font-medium text-[#202329]">{row.current.user?.name ?? '未知成员'}</span>
@@ -179,7 +177,6 @@ function AccountCard({ row, now, onUseNow, onReserve, onCopyEmail, onRelease }: 
         </div>
       ) : null}
 
-      {/* 操作按钮行 */}
       <div className="flex items-center gap-2">
         {isInUse ? (
           <Button disabled={!row.canRelease || !row.current} onClick={() => onRelease(row)} size="sm" type="button" variant="subtle">
