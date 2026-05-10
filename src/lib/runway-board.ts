@@ -207,8 +207,8 @@ export function validateBookingDraft(draft: BookingDraft, context: BookingValida
       timestamp(b.endTime) > timestamp(value.startTime),
   ).length;
 
-  if (concurrentCount >= 2) {
-    return { ok: false, reason: '该成员在此时间段已占用 2 个账号' };
+  if (concurrentCount >= 1) {
+    return { ok: false, reason: '该成员在此时间段已占用 1 个账号' };
   }
 
   return { ok: true, value };

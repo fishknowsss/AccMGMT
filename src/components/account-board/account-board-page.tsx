@@ -22,6 +22,10 @@ const sectionIcons = {
 
 const primarySections = boardSections.filter((section) => section.id !== 'accounts');
 const settingsSection = boardSections.find((section) => section.id === 'accounts') ?? boardSections[1];
+export const groupEditorListClassName = 'grid max-h-[280px] divide-y divide-[#EEF2F6] overflow-y-auto';
+export const groupEditorRowClassName = 'grid min-h-[68px] gap-3 px-5 py-3 sm:grid-cols-[1fr_110px_40px] sm:items-center';
+export const memberEditorListClassName = 'grid max-h-[360px] divide-y divide-[#EEF2F6] overflow-y-scroll [scrollbar-gutter:stable]';
+export const memberEditorRowClassName = 'grid min-h-[68px] items-center gap-x-3 gap-y-2 px-5 py-3 sm:grid-cols-[minmax(0,1fr)_160px_80px_40px]';
 
 export function AccountBoardPage() {
   const model = useAccountsViewModel();
@@ -597,7 +601,7 @@ function GroupEditorSection({ model }: { model: BoardModel }) {
         </div>
         {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{error}</div> : null}
       </div>
-      <div className="grid divide-y divide-[#EEF2F6] lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+      <div className={groupEditorListClassName}>
         {model.groups.map((group) => (
           <GroupEditor group={group} key={group.id} onDelete={model.deleteGroup} onSave={model.updateGroup} />
         ))}
@@ -626,7 +630,7 @@ function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: Boar
   }
 
   return (
-    <article className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_110px_40px] sm:items-center">
+    <article className={groupEditorRowClassName}>
       <Input value={draft.name} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
       <label className="flex items-center gap-2 text-sm font-medium text-[#344154]">
         <input
@@ -689,7 +693,7 @@ function MemberEditorSection({ model }: { model: BoardModel }) {
         </div>
         {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{error}</div> : null}
       </div>
-      <div className="grid divide-y divide-[#EEF2F6] lg:min-h-0 lg:flex-1 lg:overflow-y-scroll lg:[scrollbar-gutter:stable]">
+      <div className={memberEditorListClassName}>
         {model.users.map((user) => (
           <MemberEditor groups={model.activeGroups} key={user.id} onDelete={model.deleteUser} onSave={model.updateUser} user={user} />
         ))}
@@ -718,7 +722,7 @@ function MemberEditor({ groups, onDelete, onSave, user }: { groups: Group[]; onD
   }
 
   return (
-    <article className="grid items-center gap-x-3 gap-y-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_160px_80px_40px]">
+    <article className={memberEditorRowClassName}>
       <Input value={draft.name} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
       <GroupSelect
         groups={groups}

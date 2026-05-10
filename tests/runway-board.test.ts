@@ -179,7 +179,7 @@ describe('validateBookingDraft', () => {
       expect(result.reason).toContain('下一预约');
     }
   });
-  it('blocks a third concurrent account booking for the same user', () => {
+  it('blocks a second concurrent account booking for the same user', () => {
     const result = validateBookingDraft(
       {
         accountId: 'account-2',
@@ -190,10 +190,7 @@ describe('validateBookingDraft', () => {
         endTime: '2026-05-09T12:00:00.000Z',
       },
       {
-        bookings: [
-          booking({}),
-          booking({ id: 'booking-2', accountId: 'account-3', startTime: '2026-05-09T09:30:00.000Z', endTime: '2026-05-09T11:30:00.000Z' }),
-        ],
+        bookings: [booking({})],
         mode: 'reserve',
         now,
       },
@@ -201,7 +198,7 @@ describe('validateBookingDraft', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.reason).toContain('2 个账号');
+      expect(result.reason).toContain('1 个账号');
     }
   });
 });
