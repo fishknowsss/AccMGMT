@@ -74,7 +74,7 @@ export function useAccountsViewModel() {
   const [groups, setGroups] = useState(snapshot.groups);
   const [filters, setFilters] = useState<AccountFiltersState>(emptyFilters);
   const [now, setNow] = useState(() => new Date());
-  const [notice, setNotice] = useState('');
+
   const [toast, setToast] = useState('');
   const [useNowForm, setUseNowForm] = useState<UseNowFormState | null>(null);
   const [bookingForm, setBookingForm] = useState<BookingFormState | null>(null);
@@ -153,12 +153,10 @@ export function useAccountsViewModel() {
   }
 
   function openUseNow(accountId: string) {
-    setNotice('');
     setUseNowForm(createUseNowForm(accountId, bookings, now, defaultUser));
   }
 
   function openBooking(accountId: string) {
-    setNotice('');
     setBookingForm(createBookingForm(accountId, now, defaultUser));
   }
 
@@ -225,7 +223,7 @@ export function useAccountsViewModel() {
       const booking = await saveCloudBooking(validation.value, users, groups);
       setBookings((current) => [...current, booking]);
       setUseNowForm(null);
-      setNotice('已开始使用账号。');
+      setToast('已开始使用账号。');
     } catch (error) {
       setUseNowForm({ ...useNowForm, error: error instanceof Error ? error.message : '操作失败' });
     }
@@ -262,7 +260,7 @@ export function useAccountsViewModel() {
       const booking = await saveCloudBooking(validation.value, users, groups);
       setBookings((current) => [...current, booking]);
       setBookingForm(null);
-      setNotice('预约已保存。');
+      setToast('预约已保存。');
     } catch (error) {
       setBookingForm({ ...bookingForm, error: error instanceof Error ? error.message : '操作失败' });
     }
@@ -282,9 +280,9 @@ export function useAccountsViewModel() {
             : item,
         ),
       );
-      setNotice('已结束使用。');
+      setToast('已结束使用。');
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '操作失败');
+      setToast(error instanceof Error ? error.message : '操作失败');
     }
   }
 
@@ -295,13 +293,13 @@ export function useAccountsViewModel() {
       .find((item) => getAccountRuntime(item.id, bookings, now).kind === 'idle');
 
     if (!account) {
-      setNotice('当前没有可用账号。');
+      setToast('当前没有可用账号。');
       return;
     }
 
     setFilters({ ...emptyFilters, query: account.email });
     setUseNowForm(createUseNowForm(account.id, bookings, now, defaultUser));
-    setNotice(`已找到 ${account.label}。`);
+    setToast(`已找到 ${account.label}。`);
   }
 
   async function copyAccountEmail(email: string) {
@@ -316,7 +314,7 @@ export function useAccountsViewModel() {
   async function updateAccount(accountId: string, next: Partial<Pick<Account, 'email' | 'label' | 'renewalDate' | 'isActive'>>) {
     const account = accounts.find((item) => item.id === accountId);
     if (!account) {
-      setNotice('账号不存在。');
+      setToast('账号不存在。');
       return;
     }
 
@@ -344,9 +342,9 @@ export function useAccountsViewModel() {
             : item,
         ),
       );
-      setNotice('账号信息已更新。');
+      setToast('账号信息已更新。');
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : '操作失败');
+      setToast(error instanceof Error ? error.message : '操作失败');
     }
   }
 
@@ -388,7 +386,7 @@ export function useAccountsViewModel() {
           sortOrder: cloudAccount.sortOrder ?? sortOrder,
         },
       ]);
-      setNotice('账号已新增。');
+      setToast('账号已新增。');
       return { ok: true };
     } catch (error) {
       return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
@@ -406,7 +404,7 @@ export function useAccountsViewModel() {
       ...validation.value,
     };
     setGroups((current) => [...current, group]);
-    setNotice('小组已新增。');
+    setToast('小组已新增。');
     return { ok: true };
   }
 
@@ -417,7 +415,7 @@ export function useAccountsViewModel() {
     }
 
     setGroups((current) => current.map((group) => (group.id === groupId ? { ...group, ...validation.value } : group)));
-    setNotice('小组已更新。');
+    setToast('小组已更新。');
     return { ok: true };
   }
 
@@ -428,7 +426,7 @@ export function useAccountsViewModel() {
     }
 
     setGroups((current) => current.filter((group) => group.id !== groupId));
-    setNotice('小组已删除。');
+    setToast('小组已删除。');
     return { ok: true };
   }
 
@@ -443,7 +441,7 @@ export function useAccountsViewModel() {
       ...validation.value,
     };
     setUsers((current) => [...current, user]);
-    setNotice('成员已新增。');
+    setToast('成员已新增。');
     return { ok: true };
   }
 
@@ -454,7 +452,7 @@ export function useAccountsViewModel() {
     }
 
     setUsers((current) => current.map((user) => (user.id === userId ? { ...user, ...validation.value } : user)));
-    setNotice('成员已更新。');
+    setToast('成员已更新。');
     return { ok: true };
   }
 
@@ -465,7 +463,7 @@ export function useAccountsViewModel() {
     }
 
     setUsers((current) => current.filter((user) => user.id !== userId));
-    setNotice('成员已删除。');
+    setToast('成员已删除。');
     return { ok: true };
   }
 
@@ -488,7 +486,6 @@ export function useAccountsViewModel() {
     now,
     filters,
     view,
-    notice,
     toast,
     useNowForm,
     bookingForm,

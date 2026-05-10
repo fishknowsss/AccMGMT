@@ -123,8 +123,6 @@ export function AccountBoardPage() {
             )
           ) : null}
 
-          {model.notice ? <div className="shrink-0 rounded-xl border border-[#D7E3F6] bg-[#EEF5FF] px-4 py-3 text-sm text-[#315D92]">{model.notice}</div> : null}
-
           {activeSection === 'board' && !model.isLoading ? (
             <AccountTable
               now={model.now}
