@@ -39,7 +39,7 @@ export function createMockSnapshot(now = new Date()): MockSnapshot {
       id: `account-${number}`,
       email,
       label: `R-${String(number).padStart(2, '0')}`,
-      renewalDate: dateOnly(addDays(today, renewalOffsets[index] ?? 40)),
+      renewalDate: defaultRenewalDate,
       isActive: true,
       sortOrder: number,
     };
@@ -150,7 +150,7 @@ export const runwayAccountEmails = [
   'LeonaCox646320@outlook.com',
 ] as const;
 
-const renewalOffsets = [-2, 3, 6, 12, 18, 27, 35, 42, 50, 58, 65, 73];
+const defaultRenewalDate = '2026-06-01';
 
 function addDays(date: Date, days: number): Date {
   const next = new Date(date);
@@ -162,8 +162,4 @@ function setClock(date: Date, hours: number, minutes: number): Date {
   const next = new Date(date);
   next.setHours(hours, minutes, 0, 0);
   return next;
-}
-
-function dateOnly(date: Date): string {
-  return date.toISOString().slice(0, 10);
 }

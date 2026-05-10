@@ -7,6 +7,7 @@ describe('runway mock accounts', () => {
 
     expect(snapshot.accounts.map((account) => account.email)).toEqual([...runwayAccountEmails]);
     expect(snapshot.accounts).toHaveLength(24);
+    expect(snapshot.accounts.every((account) => account.renewalDate === '2026-06-01')).toBe(true);
     expect(snapshot.accounts[0]).toMatchObject({ id: 'account-1', label: 'R-01', sortOrder: 1 });
     expect(snapshot.accounts[23]).toMatchObject({ id: 'account-24', label: 'R-24', sortOrder: 24 });
   });
