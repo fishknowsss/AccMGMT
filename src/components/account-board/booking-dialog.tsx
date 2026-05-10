@@ -84,16 +84,24 @@ export function BookingDialog({ form, account, users, groups, projects, onChange
         </div>
         <Field label="项目">
           <div className="relative">
-            <div className="flex gap-1">
-              <Input autoFocus className="flex-1" onChange={(event) => { onChange({ projectName: event.target.value }); setPickerOpen(false); }} value={form.projectName} />
+            <div className="flex">
+              <Input
+                autoFocus
+                className={projects.length > 0 ? 'flex-1 rounded-r-none' : 'flex-1'}
+                onChange={(event) => {
+                  onChange({ projectName: event.target.value });
+                  setPickerOpen(false);
+                }}
+                value={form.projectName}
+              />
               {projects.length > 0 ? (
                 <button
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#DDE3EA] bg-white text-[#667085] transition hover:bg-[#F5F7FA]"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-r-md border border-l-0 border-[#DDE1E7] bg-white text-[#667085] transition hover:bg-[#F5F7FA]"
                   onClick={() => setPickerOpen((v) => !v)}
                   title="从已有项目中选择"
                   type="button"
                 >
-                  <ChevronDown size={14} className={pickerOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                  <ChevronDown size={13} className={pickerOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
                 </button>
               ) : null}
             </div>
@@ -103,7 +111,10 @@ export function BookingDialog({ form, account, users, groups, projects, onChange
                   <li key={p}>
                     <button
                       className="w-full px-3 py-2 text-left text-sm text-[#202329] hover:bg-[#F5F7FA]"
-                      onClick={() => { onChange({ projectName: p }); setPickerOpen(false); }}
+                      onClick={() => {
+                        onChange({ projectName: p });
+                        setPickerOpen(false);
+                      }}
                       type="button"
                     >
                       {p}

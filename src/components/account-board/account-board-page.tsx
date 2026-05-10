@@ -17,7 +17,8 @@ const sectionIcons = {
   board: LayoutDashboard,
   accounts: Settings,
   groups: UsersRound,
-};
+  projects: FolderOpen,
+} satisfies Record<BoardSection, React.FC<{ size?: number; className?: string }>>;
 
 const primarySections = boardSections.filter((section) => section.id !== 'accounts');
 const settingsSection = boardSections.find((section) => section.id === 'accounts') ?? boardSections[1];
@@ -61,42 +62,21 @@ export function AccountBoardPage() {
   return (
     <div className="h-screen overflow-hidden bg-[#F6F7F9] text-[#202329]">
       <div className="relative mx-auto flex h-full w-full max-w-[1440px] gap-4 px-4 py-4 lg:px-6">
-        <aside className="hidden w-[192px] shrink-0 lg:block">
-          <div className="sticky top-4 flex h-[calc(100vh-2rem)] flex-col rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] px-3 py-3 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
-            <div className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-[#1C2430] text-sm font-semibold text-white">AM</div>
-            <nav className="grid gap-1" aria-label="主导航">
+        <aside className="hidden w-[76px] shrink-0 lg:block">
+          <div className="sticky top-4 flex h-[calc(100vh-2rem)] flex-col items-center rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] p-3 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#1C2430] text-sm font-semibold text-white">AM</div>
+            <nav className="mt-6 grid gap-2" aria-label="主导航">
               {primarySections.map((item) => (
                 <RailButton active={item.id === activeSection} key={item.id} section={item.id} onClick={setActiveSection} />
               ))}
             </nav>
-
-            <div className="mt-5 flex min-h-0 flex-1 flex-col">
-              <div className="mb-2 flex items-center gap-1.5 px-2">
-                <FolderOpen size={13} className="shrink-0 text-[#98A7B7]" />
-                <span className="text-xs font-medium text-[#98A7B7]">项目</span>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                {model.projects.length ? (
-                  <ul className="grid gap-0.5">
-                    {model.projects.map((p) => (
-                      <li key={p} className="truncate rounded-lg px-2 py-1.5 text-sm text-[#344154] hover:bg-[#EEF2F6]" title={p}>
-                        {p}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="px-2 text-xs text-[#B0BAC9]">暂无项目记录。</p>
-                )}
-              </div>
-            </div>
-
-            <nav className="mt-2 grid gap-1" aria-label="设置导航">
+            <nav className="mt-auto grid gap-2" aria-label="设置导航">
               <RailButton active={settingsSection.id === activeSection} section={settingsSection.id} onClick={setActiveSection} />
             </nav>
           </div>
         </aside>
 
-        <main className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-4', activeSection === 'accounts' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden')}>
+          <main className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-4', (activeSection === 'accounts' || activeSection === 'projects') ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden')}>
           <header className="shrink-0 rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] px-5 py-4 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
@@ -156,6 +136,7 @@ export function AccountBoardPage() {
           ) : null}
           {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} /> : null}
           {activeSection === 'groups' ? <MemberGroupsPanel developerMode={developerMode} model={model} /> : null}
+          {activeSection === 'projects' ? <ProjectsPanel projects={model.projects} /> : null}
         </main>
       </div>
 
@@ -212,21 +193,20 @@ function FloatingToast({ message }: { message: string }) {
 
 function RailButton({ active, section, onClick }: { active: boolean; section: BoardSection; onClick: (section: BoardSection) => void }) {
   const meta = getBoardSectionMeta(section);
-  const Icon = sectionIcons[section];
+  const Icon = sectionIcons[section] as React.FC<{ size?: number }>;
 
   return (
     <button
       aria-current={active ? 'page' : undefined}
       aria-label={meta.label}
       className={cn(
-        'flex h-10 w-full items-center gap-3 rounded-xl px-2 text-[#667085] transition hover:bg-[#EEF2F6] hover:text-[#263241]',
+        'grid h-11 w-11 place-items-center rounded-2xl text-[#667085] transition hover:bg-[#EEF2F6] hover:text-[#263241]',
         active && 'bg-[#E8EDF3] text-[#1C2430] shadow-[inset_0_0_0_1px_rgba(81,94,115,0.08)]',
       )}
       onClick={() => onClick(section)}
       type="button"
     >
-      <Icon size={16} className="shrink-0" />
-      <span className="truncate text-sm font-medium">{meta.shortLabel}</span>
+      <Icon size={18} />
     </button>
   );
 }
@@ -237,6 +217,24 @@ function SiteSettingsPanel({ developerMode, model }: { developerMode: boolean; m
       <AccountPoolSummary model={model} />
 
       {developerMode ? <AccountEditorSection model={model} /> : null}
+    </div>
+  );
+}
+
+function ProjectsPanel({ projects }: { projects: string[] }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
+      {projects.length ? (
+        <ul className="divide-y divide-[#EEF2F6]">
+          {projects.map((p) => (
+            <li className="px-5 py-3 text-sm text-[#344154]" key={p}>
+              {p}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="px-5 py-10 text-center text-sm text-[#98A7B7]">暂无项目。在使用或预约账号时填写项目名即可添加。</div>
+      )}
     </div>
   );
 }
@@ -425,10 +423,14 @@ function saveAccountDraft(account: Account, draft: AccountDraftState, onSave: Bo
 function MemberGroupsPanel({ developerMode, model }: { developerMode: boolean; model: BoardModel }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-      <section className="max-h-[230px] shrink-0 overflow-y-auto">
-        <div className="grid gap-3 pb-0.5 md:grid-cols-2 xl:grid-cols-4">
+      <section className="shrink-0 overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
+        <div className="flex items-center justify-between border-b border-[#EEF2F6] px-5 py-3">
+          <h2 className="text-sm font-semibold text-[#171A1F]">小组概览</h2>
+          <span className="font-mono text-xs tabular-nums text-[#667085]">{model.groups.length} 个小组</span>
+        </div>
+        <div className="divide-y divide-[#EEF2F6]">
           {model.groups.map((group) => (
-            <GroupSummaryCard group={group} key={group.id} model={model} />
+            <GroupSummaryRow group={group} key={group.id} model={model} />
           ))}
         </div>
       </section>
@@ -443,40 +445,25 @@ function MemberGroupsPanel({ developerMode, model }: { developerMode: boolean; m
   );
 }
 
-function GroupSummaryCard({ group, model }: { group: Group; model: BoardModel }) {
+function GroupSummaryRow({ group, model }: { group: Group; model: BoardModel }) {
   const members = model.users.filter((user) => user.groupId === group.id && user.isActive !== false);
   const activeBookings = model.view.allRows.filter((row) => row.current?.groupId === group.id);
   const nextBookings = model.view.allRows.filter((row) => row.next?.groupId === group.id);
-  const occupancyByUserId = new Map<string, number>();
-  for (const row of activeBookings) {
-    if (row.current) {
-      occupancyByUserId.set(row.current.userId, (occupancyByUserId.get(row.current.userId) ?? 0) + 1);
-    }
-  }
 
   return (
-    <article className="rounded-2xl border border-[#DDE3EA] bg-white p-5 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
-      <div className="mb-5 flex items-center justify-between">
-        <h2 className="text-base font-semibold text-[#171A1F]">{group.name}</h2>
-        <span className="rounded-md bg-[#EEF2F6] px-2 py-1 font-mono text-sm tabular-nums text-[#344154]">{members.length} 人</span>
-      </div>
-      <div className="mb-5 grid grid-cols-2 gap-2">
-        <ReadonlySetting label="占用中" value={`${activeBookings.length}`} />
-        <ReadonlySetting label="下一预约" value={`${nextBookings.length}`} />
-      </div>
-      <div className="grid gap-2">
+    <div className="grid grid-cols-[minmax(0,1fr)_60px_60px_70px] items-center gap-4 px-5 py-3">
+      <div className="flex min-w-0 items-baseline gap-2">
+        <span className="font-medium text-[#171A1F]">{group.name}</span>
         {members.length ? (
-          members.map((member) => (
-            <div className="flex items-center justify-between rounded-xl bg-[#FAFBFC] px-3 py-2" key={member.id}>
-              <span className="font-medium text-[#344154]">{member.name}</span>
-              <span className="font-mono text-sm tabular-nums text-[#667085]">{occupancyByUserId.get(member.id) ?? 0} 个占用</span>
-            </div>
-          ))
+          <span className="truncate text-sm text-[#98A7B7]">{members.map((m) => m.name).join('、')}</span>
         ) : (
-          <div className="rounded-xl bg-[#FAFBFC] px-3 py-2 text-sm text-[#667085]">添加成员。</div>
+          <span className="text-sm text-[#C4CAD4]">添加成员</span>
         )}
       </div>
-    </article>
+      <span className="text-right font-mono text-sm tabular-nums text-[#667085]">{members.length} 人</span>
+      <span className="text-right font-mono text-sm tabular-nums text-[#667085]">占用 {activeBookings.length}</span>
+      <span className="text-right font-mono text-sm tabular-nums text-[#667085]">预约 {nextBookings.length}</span>
+    </div>
   );
 }
 

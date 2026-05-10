@@ -1,4 +1,4 @@
-export type BoardSection = 'board' | 'accounts' | 'groups';
+export type BoardSection = 'board' | 'accounts' | 'groups' | 'projects';
 
 export type BoardSectionMeta = {
   id: BoardSection;
@@ -8,8 +8,9 @@ export type BoardSectionMeta = {
 
 export const boardSections: BoardSectionMeta[] = [
   { id: 'board', label: '账号使用与管理面板', shortLabel: '看板' },
-  { id: 'accounts', label: '账号设置', shortLabel: '账号' },
   { id: 'groups', label: '成员小组', shortLabel: '小组' },
+  { id: 'projects', label: '项目列表', shortLabel: '项目' },
+  { id: 'accounts', label: '账号设置', shortLabel: '账号' },
 ];
 
 export function getBoardSectionMeta(section: BoardSection): BoardSectionMeta {
