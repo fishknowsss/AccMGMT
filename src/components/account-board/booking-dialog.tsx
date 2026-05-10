@@ -63,22 +63,31 @@ export function BookingDialog({ form, account, users, groups, projects, onChange
           <Input readOnly value={account?.email ?? ''} />
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="使用人">
-            <Select onChange={(event) => onChange({ userId: event.target.value })} value={form.userId}>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
           <Field label="小组">
-            <Select onChange={(event) => onChange({ groupId: event.target.value })} value={form.groupId}>
+            <Select
+              onChange={(event) => {
+                const groupId = event.target.value;
+                const firstUser = users.find((u) => u.groupId === groupId);
+                onChange({ groupId, ...(firstUser ? { userId: firstUser.id } : {}) });
+              }}
+              value={form.groupId}
+            >
               {groups.map((group) => (
                 <option key={group.id} value={group.id}>
                   {group.name}
                 </option>
               ))}
+            </Select>
+          </Field>
+          <Field label="使用人">
+            <Select onChange={(event) => onChange({ userId: event.target.value })} value={form.userId}>
+              {users
+                .filter((u) => u.groupId === form.groupId)
+                .map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
             </Select>
           </Field>
         </div>

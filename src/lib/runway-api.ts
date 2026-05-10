@@ -22,11 +22,25 @@ export type CloudBooking = {
   createdAt: string;
 };
 
+export type CloudUser = {
+  id: string;
+  name: string;
+  email: string | null;
+  groupId: string;
+  isActive?: boolean;
+};
+
+export type CloudGroup = {
+  id: string;
+  name: string;
+  isActive?: boolean;
+};
+
 export type CloudSnapshot = {
   accounts: CloudAccount[];
   bookings: CloudBooking[];
-  users: User[];
-  groups: Group[];
+  users: CloudUser[];
+  groups: CloudGroup[];
   defaultUser: User;
 };
 
@@ -56,8 +70,8 @@ export type BookingWritePayload = {
 };
 
 export function mapCloudSnapshot(snapshot: CloudSnapshot): BoardSnapshot {
-  const users = [...snapshot.users];
-  const groups = [...snapshot.groups];
+  const users: User[] = snapshot.users.map(mapCloudUser);
+  const groups: Group[] = snapshot.groups.map((g) => ({ id: g.id, name: g.name, isActive: g.isActive ?? true }));
 
   for (const booking of snapshot.bookings) {
     ensureGroup(groups, booking.groupName);
@@ -89,18 +103,28 @@ export function mapCloudSnapshot(snapshot: CloudSnapshot): BoardSnapshot {
   };
 }
 
+export function mapCloudUser(u: CloudUser): User {
+  return {
+    id: u.id,
+    name: u.name,
+    ...(u.email != null ? { email: u.email } : {}),
+    groupId: u.groupId,
+    isActive: u.isActive ?? true,
+  };
+}
+
 export async function getCloudSnapshot(baseSnapshot: BoardSnapshot): Promise<BoardSnapshot> {
   const response = await fetch('/api/accounts');
   if (!response.ok) {
     throw new Error(await readErrorMessage(response));
   }
 
-  const data = (await response.json()) as { accounts: CloudAccount[]; bookings: CloudBooking[] };
+  const data = (await response.json()) as { accounts: CloudAccount[]; bookings: CloudBooking[]; users: CloudUser[]; groups: CloudGroup[] };
   return mapCloudSnapshot({
     accounts: data.accounts,
     bookings: data.bookings,
-    users: baseSnapshot.users,
-    groups: baseSnapshot.groups,
+    users: data.users ?? baseSnapshot.users.map((u) => ({ id: u.id, name: u.name, email: u.email ?? null, groupId: u.groupId })),
+    groups: data.groups ?? baseSnapshot.groups.map((g) => ({ id: g.id, name: g.name })),
     defaultUser: baseSnapshot.defaultUser,
   });
 }
@@ -139,6 +163,74 @@ export async function releaseCloudBooking(bookingId: string): Promise<CloudBooki
   return readCloudEntity(response, 'booking');
 }
 
+export async function createCloudUser(payload: { name: string; email?: string; groupId: string; isActive: boolean }): Promise<CloudUser> {
+  const response = await fetch('/api/users', {
+    method: 'POST',
+    headers: writeHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return readSingleEntity<CloudUser>(response, 'user');
+}
+
+export async function updateCloudUser(userId: string, payload: { name: string; email?: string; groupId: string; isActive: boolean }): Promise<CloudUser> {
+  const response = await fetch(`/api/users/${userId}`, {
+    method: 'PATCH',
+    headers: writeHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return readSingleEntity<CloudUser>(response, 'user');
+}
+
+export async function deleteCloudUser(userId: string): Promise<void> {
+  const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+}
+
+export async function createCloudGroup(payload: { name: string; isActive: boolean }): Promise<CloudGroup> {
+  const response = await fetch('/api/groups', {
+    method: 'POST',
+    headers: writeHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return readSingleEntity<CloudGroup>(response, 'group');
+}
+
+export async function updateCloudGroup(groupId: string, payload: { name: string; isActive: boolean }): Promise<CloudGroup> {
+  const response = await fetch(`/api/groups/${groupId}`, {
+    method: 'PATCH',
+    headers: writeHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return readSingleEntity<CloudGroup>(response, 'group');
+}
+
+export async function deleteCloudGroup(groupId: string): Promise<void> {
+  const response = await fetch(`/api/groups/${groupId}`, { method: 'DELETE' });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+}
+
+export async function renameCloudProject(oldName: string, newName: string): Promise<void> {
+  const response = await fetch(`/api/projects/${encodeURIComponent(oldName)}`, {
+    method: 'PATCH',
+    headers: writeHeaders(),
+    body: JSON.stringify({ name: newName }),
+  });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+}
+
+export async function deleteCloudProject(name: string): Promise<void> {
+  const response = await fetch(`/api/projects/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+}
+
 function writeHeaders(): HeadersInit {
   return {
     'content-type': 'application/json',
@@ -160,6 +252,15 @@ async function readCloudEntity<T extends 'account' | 'booking'>(
   }
 
   const data = (await response.json()) as Record<T, T extends 'account' ? CloudAccount : CloudBooking>;
+  return data[key];
+}
+
+async function readSingleEntity<T>(response: Response, key: string): Promise<T> {
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+
+  const data = (await response.json()) as Record<string, T>;
   return data[key];
 }
 

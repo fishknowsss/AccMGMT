@@ -1,4 +1,4 @@
-import type { Account, Booking, BookingDraft } from '../../lib/domain';
+import type { Account, Booking, BookingDraft, Group, User } from '../../lib/domain';
 
 type AccountRow = {
   id: string;
@@ -22,18 +22,43 @@ type BookingRow = {
   created_at: string;
 };
 
+type UserRow = {
+  id: string;
+  name: string;
+  email: string | null;
+  group_id: string;
+  is_active: number;
+};
+
+type GroupRow = {
+  id: string;
+  name: string;
+  sort_order: number;
+  is_active: number;
+};
+
 export type D1Repository = {
-  listSnapshot(): Promise<{ accounts: Account[]; bookings: Booking[] }>;
+  listSnapshot(): Promise<{ accounts: Account[]; bookings: Booking[]; users: User[]; groups: Group[] }>;
   createAccount(input: { email: string; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number }): Promise<Account>;
   updateAccount(id: string, input: { email: string; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number }): Promise<Account | null>;
   createBooking(input: BookingDraft): Promise<Booking>;
   releaseBooking(id: string, releasedAt: string): Promise<Booking | null>;
+  listUsers(): Promise<User[]>;
+  createUser(input: { name: string; email: string | null; groupId: string; isActive: boolean }): Promise<User>;
+  updateUser(id: string, input: { name: string; email: string | null; groupId: string; isActive: boolean }): Promise<User | null>;
+  deleteUser(id: string): Promise<boolean>;
+  listGroups(): Promise<Group[]>;
+  createGroup(input: { name: string; isActive: boolean }): Promise<Group>;
+  updateGroup(id: string, input: { name: string; isActive: boolean }): Promise<Group | null>;
+  deleteGroup(id: string): Promise<boolean>;
+  renameProject(oldName: string, newName: string): Promise<number>;
+  deleteProject(name: string): Promise<number>;
 };
 
 export function createRepository(db: D1Database): D1Repository {
   return {
     async listSnapshot() {
-      const [accountsResult, bookingsResult] = await Promise.all([
+      const [accountsResult, bookingsResult, usersResult, groupsResult] = await Promise.all([
         db.prepare('SELECT id, email, label, renewal_date, is_active, sort_order, created_at FROM accounts ORDER BY sort_order ASC, email ASC').all<AccountRow>(),
         db
           .prepare(
@@ -42,11 +67,15 @@ export function createRepository(db: D1Database): D1Repository {
              ORDER BY start_at ASC`,
           )
           .all<BookingRow>(),
+        db.prepare('SELECT id, name, email, group_id, is_active FROM users ORDER BY name ASC').all<UserRow>(),
+        db.prepare('SELECT id, name, sort_order, is_active FROM groups ORDER BY sort_order ASC, name ASC').all<GroupRow>(),
       ]);
 
       return {
         accounts: accountsResult.results.map(mapAccount),
         bookings: bookingsResult.results.map(mapBooking),
+        users: usersResult.results.map(mapUser),
+        groups: groupsResult.results.map(mapGroup),
       };
     },
 
@@ -119,6 +148,84 @@ export function createRepository(db: D1Database): D1Repository {
 
       return getBookingById(db, id);
     },
+
+    async listUsers() {
+      const result = await db.prepare('SELECT id, name, email, group_id, is_active FROM users ORDER BY name ASC').all<UserRow>();
+      return result.results.map(mapUser);
+    },
+
+    async createUser(input) {
+      const id = crypto.randomUUID();
+      await db
+        .prepare('INSERT INTO users (id, name, email, group_id, is_active) VALUES (?1, ?2, ?3, ?4, ?5)')
+        .bind(id, input.name, input.email, input.groupId, input.isActive ? 1 : 0)
+        .run();
+      const row = await db.prepare('SELECT id, name, email, group_id, is_active FROM users WHERE id = ?1').bind(id).first<UserRow>();
+      if (!row) throw new Error('USER_CREATE_FAILED');
+      return mapUser(row);
+    },
+
+    async updateUser(id, input) {
+      await db
+        .prepare('UPDATE users SET name = ?1, email = ?2, group_id = ?3, is_active = ?4 WHERE id = ?5')
+        .bind(input.name, input.email, input.groupId, input.isActive ? 1 : 0, id)
+        .run();
+      const row = await db.prepare('SELECT id, name, email, group_id, is_active FROM users WHERE id = ?1').bind(id).first<UserRow>();
+      return row ? mapUser(row) : null;
+    },
+
+    async deleteUser(id) {
+      const result = await db.prepare('DELETE FROM users WHERE id = ?1').bind(id).run();
+      return getChangedRows(result) > 0;
+    },
+
+    async listGroups() {
+      const result = await db.prepare('SELECT id, name, sort_order, is_active FROM groups ORDER BY sort_order ASC, name ASC').all<GroupRow>();
+      return result.results.map(mapGroup);
+    },
+
+    async createGroup(input) {
+      const id = crypto.randomUUID();
+      const maxOrderRow = await db.prepare('SELECT MAX(sort_order) AS max_order FROM groups').first<{ max_order: number | null }>();
+      const sortOrder = (maxOrderRow?.max_order ?? 0) + 1;
+      await db
+        .prepare('INSERT INTO groups (id, name, sort_order, is_active) VALUES (?1, ?2, ?3, ?4)')
+        .bind(id, input.name, sortOrder, input.isActive ? 1 : 0)
+        .run();
+      const row = await db.prepare('SELECT id, name, sort_order, is_active FROM groups WHERE id = ?1').bind(id).first<GroupRow>();
+      if (!row) throw new Error('GROUP_CREATE_FAILED');
+      return mapGroup(row);
+    },
+
+    async updateGroup(id, input) {
+      await db
+        .prepare('UPDATE groups SET name = ?1, is_active = ?2 WHERE id = ?3')
+        .bind(input.name, input.isActive ? 1 : 0, id)
+        .run();
+      const row = await db.prepare('SELECT id, name, sort_order, is_active FROM groups WHERE id = ?1').bind(id).first<GroupRow>();
+      return row ? mapGroup(row) : null;
+    },
+
+    async deleteGroup(id) {
+      const result = await db.prepare('DELETE FROM groups WHERE id = ?1').bind(id).run();
+      return getChangedRows(result) > 0;
+    },
+
+    async renameProject(oldName, newName) {
+      const result = await db
+        .prepare('UPDATE bookings SET project_name = ?1 WHERE project_name = ?2')
+        .bind(newName, oldName)
+        .run();
+      return getChangedRows(result);
+    },
+
+    async deleteProject(name) {
+      const result = await db
+        .prepare('UPDATE bookings SET project_name = NULL WHERE project_name = ?1')
+        .bind(name)
+        .run();
+      return getChangedRows(result);
+    },
   };
 }
 
@@ -167,6 +274,24 @@ function mapBooking(row: BookingRow): Booking {
     endAt: row.end_at,
     releasedAt: row.released_at,
     createdAt: row.created_at,
+  };
+}
+
+function mapUser(row: UserRow): User {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    groupId: row.group_id,
+    isActive: Boolean(row.is_active),
+  };
+}
+
+function mapGroup(row: GroupRow): Group {
+  return {
+    id: row.id,
+    name: row.name,
+    isActive: Boolean(row.is_active),
   };
 }
 

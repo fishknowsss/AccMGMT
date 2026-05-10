@@ -1,3 +1,17 @@
+export type User = {
+  id: string;
+  name: string;
+  email: string | null;
+  groupId: string;
+  isActive: boolean;
+};
+
+export type Group = {
+  id: string;
+  name: string;
+  isActive: boolean;
+};
+
 export type Account = {
   id: string;
   email: string;

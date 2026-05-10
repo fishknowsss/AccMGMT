@@ -10,7 +10,7 @@ export type Account = {
 export type User = {
   id: string;
   name: string;
-  email: string;
+  email?: string;
   groupId: string;
   isActive?: boolean;
 };
@@ -249,7 +249,7 @@ export function validateUserDraft(draft: UserDraft, users: User[], groups: Group
   }
 
   if (value.email) {
-    const duplicate = users.some((user) => user.id !== editingUserId && user.email.trim().toLowerCase() === value.email.toLowerCase());
+    const duplicate = users.some((user) => user.id !== editingUserId && (user.email ?? '').trim().toLowerCase() === value.email.toLowerCase());
     if (duplicate) {
       return { ok: false, reason: '这个邮箱已经存在' };
     }

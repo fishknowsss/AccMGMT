@@ -136,7 +136,7 @@ export function AccountBoardPage() {
           ) : null}
           {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} /> : null}
           {activeSection === 'groups' ? <MemberGroupsPanel developerMode={developerMode} model={model} /> : null}
-          {activeSection === 'projects' ? <ProjectsPanel projects={model.projects} /> : null}
+          {activeSection === 'projects' ? <ProjectsPanel model={model} /> : null}
         </main>
       </div>
 
@@ -221,20 +221,78 @@ function SiteSettingsPanel({ developerMode, model }: { developerMode: boolean; m
   );
 }
 
-function ProjectsPanel({ projects }: { projects: string[] }) {
+function ProjectsPanel({ model }: { model: BoardModel }) {
+  const { projects } = model;
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [error, setError] = useState('');
+
+  function startEdit(name: string) {
+    setEditing(name);
+    setEditName(name);
+    setError('');
+  }
+
+  async function handleSave(oldName: string) {
+    const result = await model.renameProject(oldName, editName);
+    if (!result.ok) {
+      setError(result.reason);
+      return;
+    }
+    setEditing(null);
+    setError('');
+  }
+
+  async function handleDelete(name: string) {
+    const result = await model.deleteProject(name);
+    if (!result.ok) {
+      setError(result.reason);
+    }
+  }
+
   return (
     <div className="overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
       {projects.length ? (
         <ul className="divide-y divide-[#EEF2F6]">
           {projects.map((p) => (
-            <li className="px-5 py-3 text-sm text-[#344154]" key={p}>
-              {p}
+            <li className="flex items-center gap-2 px-5 py-3" key={p}>
+              {editing === p ? (
+                <>
+                  <input
+                    autoFocus
+                    className="flex-1 rounded-lg border border-[#DDE3EA] bg-[#FCFDFE] px-3 py-1.5 text-sm text-[#171A1F] outline-none focus:border-[#1C2430]"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void handleSave(p);
+                      if (e.key === 'Escape') { setEditing(null); setError(''); }
+                    }}
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                  />
+                  <Button onClick={() => void handleSave(p)} size="sm" type="button" variant="ghost">保存</Button>
+                  <Button onClick={() => { setEditing(null); setError(''); }} size="sm" type="button" variant="ghost">取消</Button>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-sm text-[#344154]">{p}</span>
+                  <Button aria-label="编辑项目" onClick={() => startEdit(p)} size="icon" type="button" variant="ghost">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                      <path d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 16.5H9v-3.5z" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </Button>
+                  <Button aria-label="删除项目" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={() => void handleDelete(p)} size="icon" type="button" variant="ghost">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                      <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 0h8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </Button>
+                </>
+              )}
             </li>
           ))}
         </ul>
       ) : (
         <div className="px-5 py-10 text-center text-sm text-[#98A7B7]">暂无项目。在使用或预约账号时填写项目名即可添加。</div>
       )}
+      {error ? <p className="border-t border-[#EEF2F6] px-5 py-3 text-xs text-[#8D3F36]">{error}</p> : null}
     </div>
   );
 }
@@ -471,8 +529,8 @@ function GroupEditorSection({ model }: { model: BoardModel }) {
   const [draft, setDraft] = useState({ name: '', isActive: true });
   const [error, setError] = useState('');
 
-  function handleCreate() {
-    const result = model.createGroup(draft);
+  async function handleCreate() {
+    const result = await model.createGroup(draft);
     if (!result.ok) {
       setError(result.reason);
       return;
@@ -516,13 +574,13 @@ function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: Boar
     setError('');
   }, [group]);
 
-  function handleSave() {
-    const result = onSave(group.id, draft);
+  async function handleSave() {
+    const result = await onSave(group.id, draft);
     setError(result.ok ? '' : result.reason);
   }
 
-  function handleDelete() {
-    const result = onDelete(group.id);
+  async function handleDelete() {
+    const result = await onDelete(group.id);
     setError(result.ok ? '' : result.reason);
   }
 
@@ -533,10 +591,10 @@ function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: Boar
         <input
           checked={draft.isActive}
           className="h-4 w-4 accent-[#1C2430]"
-          onChange={(event) => {
+          onChange={async (event) => {
             const next = { ...draft, isActive: event.target.checked };
             setDraft(next);
-            const result = onSave(group.id, next);
+            const result = await onSave(group.id, next);
             setError(result.ok ? '' : result.reason);
           }}
           type="checkbox"
@@ -560,8 +618,8 @@ function MemberEditorSection({ model }: { model: BoardModel }) {
     setDraft((current) => (current.groupId ? current : { ...current, groupId: defaultGroupId }));
   }, [defaultGroupId]);
 
-  function handleCreate() {
-    const result = model.createUser(draft);
+  async function handleCreate() {
+    const result = await model.createUser(draft);
     if (!result.ok) {
       setError(result.reason);
       return;
@@ -608,13 +666,13 @@ function MemberEditor({ groups, onDelete, onSave, user }: { groups: Group[]; onD
     setError('');
   }, [user]);
 
-  function handleSave() {
-    const result = onSave(user.id, draft);
+  async function handleSave() {
+    const result = await onSave(user.id, draft);
     setError(result.ok ? '' : result.reason);
   }
 
-  function handleDelete() {
-    const result = onDelete(user.id);
+  async function handleDelete() {
+    const result = await onDelete(user.id);
     setError(result.ok ? '' : result.reason);
   }
 
@@ -624,10 +682,10 @@ function MemberEditor({ groups, onDelete, onSave, user }: { groups: Group[]; onD
       <GroupSelect
         groups={groups}
         value={draft.groupId}
-        onChange={(groupId) => {
+        onChange={async (groupId) => {
           const next = { ...draft, groupId };
           setDraft(next);
-          const result = onSave(user.id, next);
+          const result = await onSave(user.id, next);
           setError(result.ok ? '' : result.reason);
         }}
       />
@@ -635,10 +693,10 @@ function MemberEditor({ groups, onDelete, onSave, user }: { groups: Group[]; onD
         <input
           checked={draft.isActive}
           className="h-4 w-4 accent-[#1C2430]"
-          onChange={(event) => {
+          onChange={async (event) => {
             const next = { ...draft, isActive: event.target.checked };
             setDraft(next);
-            const result = onSave(user.id, next);
+            const result = await onSave(user.id, next);
             setError(result.ok ? '' : result.reason);
           }}
           type="checkbox"

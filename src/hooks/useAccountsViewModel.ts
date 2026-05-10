@@ -28,9 +28,17 @@ import { createMockSnapshot } from '../lib/runway-mock';
 import {
   createCloudAccount,
   createCloudBooking,
+  createCloudGroup,
+  createCloudUser,
+  deleteCloudGroup,
+  deleteCloudProject,
+  deleteCloudUser,
   getCloudSnapshot,
   releaseCloudBooking,
+  renameCloudProject,
   updateCloudAccount,
+  updateCloudGroup,
+  updateCloudUser,
   type AccountWritePayload,
   type BookingWritePayload,
 } from '../lib/runway-api';
@@ -393,82 +401,133 @@ export function useAccountsViewModel() {
     }
   }
 
-  function createGroup(draft: GroupDraftState): { ok: true } | { ok: false; reason: string } {
+  async function createGroup(draft: GroupDraftState): Promise<{ ok: true } | { ok: false; reason: string }> {
     const validation = validateGroupDraft(draft, groups);
     if (!validation.ok) {
       return { ok: false, reason: validation.reason };
     }
 
-    const group = {
-      id: nextEntityId('group', validation.value.name, groups.map((item) => item.id)),
-      ...validation.value,
-    };
-    setGroups((current) => [...current, group]);
-    setToast('小组已新增。');
-    return { ok: true };
+    try {
+      const cloudGroup = await createCloudGroup(validation.value);
+      setGroups((current) => [...current, { id: cloudGroup.id, name: cloudGroup.name, isActive: cloudGroup.isActive }]);
+      setToast('小组已新增。');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
   }
 
-  function updateGroup(groupId: string, draft: GroupDraftState): { ok: true } | { ok: false; reason: string } {
+  async function updateGroup(groupId: string, draft: GroupDraftState): Promise<{ ok: true } | { ok: false; reason: string }> {
     const validation = validateGroupDraft(draft, groups, groupId);
     if (!validation.ok) {
       return { ok: false, reason: validation.reason };
     }
 
-    setGroups((current) => current.map((group) => (group.id === groupId ? { ...group, ...validation.value } : group)));
-    setToast('小组已更新。');
-    return { ok: true };
+    try {
+      const cloudGroup = await updateCloudGroup(groupId, validation.value);
+      setGroups((current) => current.map((g) => (g.id === groupId ? { ...g, name: cloudGroup.name, isActive: cloudGroup.isActive } : g)));
+      setToast('小组已更新。');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
   }
 
-  function deleteGroup(groupId: string): { ok: true } | { ok: false; reason: string } {
+  async function deleteGroup(groupId: string): Promise<{ ok: true } | { ok: false; reason: string }> {
     const validation = validateGroupDeletion(groupId, users, bookings);
     if (!validation.ok) {
       return { ok: false, reason: validation.reason };
     }
 
-    const fallbackGroupId = groups.find((group) => group.id !== groupId)?.id ?? '';
-    setGroups((current) => current.filter((group) => group.id !== groupId));
-    setUsers((current) =>
-      current.map((user) => (user.groupId === groupId ? { ...user, groupId: fallbackGroupId } : user)),
-    );
-    setToast('小组已删除。');
-    return { ok: true };
+    try {
+      await deleteCloudGroup(groupId);
+      const fallbackGroupId = groups.find((group) => group.id !== groupId)?.id ?? '';
+      setGroups((current) => current.filter((group) => group.id !== groupId));
+      setUsers((current) => current.map((user) => (user.groupId === groupId ? { ...user, groupId: fallbackGroupId } : user)));
+      setToast('小组已删除。');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
   }
 
-  function createUser(draft: MemberDraftState): { ok: true } | { ok: false; reason: string } {
+  async function createUser(draft: MemberDraftState): Promise<{ ok: true } | { ok: false; reason: string }> {
     const validation = validateUserDraft(draft, users, groups);
     if (!validation.ok) {
       return { ok: false, reason: validation.reason };
     }
 
-    const user = {
-      id: nextEntityId('user', validation.value.email || validation.value.name, users.map((item) => item.id)),
-      ...validation.value,
-    };
-    setUsers((current) => [...current, user]);
-    setToast('成员已新增。');
-    return { ok: true };
+    try {
+      const cloudUser = await createCloudUser({
+        name: validation.value.name,
+        email: validation.value.email || undefined,
+        groupId: validation.value.groupId,
+        isActive: validation.value.isActive !== false,
+      });
+      setUsers((current) => [
+        ...current,
+        {
+          id: cloudUser.id,
+          name: cloudUser.name,
+          ...(cloudUser.email != null ? { email: cloudUser.email } : {}),
+          groupId: cloudUser.groupId,
+          isActive: cloudUser.isActive ?? true,
+        },
+      ]);
+      setToast('成员已新增。');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
   }
 
-  function updateUser(userId: string, draft: MemberDraftState): { ok: true } | { ok: false; reason: string } {
+  async function updateUser(userId: string, draft: MemberDraftState): Promise<{ ok: true } | { ok: false; reason: string }> {
     const validation = validateUserDraft(draft, users, groups, userId);
     if (!validation.ok) {
       return { ok: false, reason: validation.reason };
     }
 
-    setUsers((current) => current.map((user) => (user.id === userId ? { ...user, ...validation.value } : user)));
-    setToast('成员已更新。');
-    return { ok: true };
+    try {
+      const cloudUser = await updateCloudUser(userId, {
+        name: validation.value.name,
+        email: validation.value.email || undefined,
+        groupId: validation.value.groupId,
+        isActive: validation.value.isActive !== false,
+      });
+      setUsers((current) =>
+        current.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                name: cloudUser.name,
+                ...(cloudUser.email != null ? { email: cloudUser.email } : { email: undefined }),
+                groupId: cloudUser.groupId,
+                isActive: cloudUser.isActive ?? true,
+              }
+            : u,
+        ),
+      );
+      setToast('成员已更新。');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
   }
 
-  function deleteUser(userId: string): { ok: true } | { ok: false; reason: string } {
+  async function deleteUser(userId: string): Promise<{ ok: true } | { ok: false; reason: string }> {
     const validation = validateUserDeletion(userId, bookings);
     if (!validation.ok) {
       return { ok: false, reason: validation.reason };
     }
 
-    setUsers((current) => current.filter((user) => user.id !== userId));
-    setToast('成员已删除。');
-    return { ok: true };
+    try {
+      await deleteCloudUser(userId);
+      setUsers((current) => current.filter((user) => user.id !== userId));
+      setToast('成员已删除。');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
   }
 
   function getEmptyAccountDraft(): AccountDraftState {
@@ -484,6 +543,31 @@ export function useAccountsViewModel() {
     () => Array.from(new Set(bookings.map((b) => b.projectName).filter(Boolean))).sort(),
     [bookings],
   );
+
+  async function renameProject(oldName: string, newName: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const trimmed = newName.trim();
+    if (!trimmed) return { ok: false, reason: '项目名不能为空' };
+    if (projects.includes(trimmed) && trimmed !== oldName) return { ok: false, reason: '项目名已存在' };
+    try {
+      await renameCloudProject(oldName, trimmed);
+      setBookings((current) => current.map((b) => (b.projectName === oldName ? { ...b, projectName: trimmed } : b)));
+      setToast('项目已更名。');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
+  }
+
+  async function deleteProject(name: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+    try {
+      await deleteCloudProject(name);
+      setBookings((current) => current.map((b) => (b.projectName === name ? { ...b, projectName: '' } : b)));
+      setToast('项目已删除。');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
+  }
 
   return {
     accounts,
@@ -518,28 +602,12 @@ export function useAccountsViewModel() {
     createUser,
     updateUser,
     deleteUser,
+    renameProject,
+    deleteProject,
     getEmptyAccountDraft,
     closeUseNow: () => setUseNowForm(null),
     closeBooking: () => setBookingForm(null),
   };
-}
-
-function nextEntityId(prefix: 'group' | 'user', value: string, existingIds: string[]): string {
-  const base = `${prefix}-${slugId(value)}`;
-  if (!existingIds.includes(base)) {
-    return base;
-  }
-
-  let index = 2;
-  while (existingIds.includes(`${base}-${index}`)) {
-    index += 1;
-  }
-  return `${base}-${index}`;
-}
-
-function slugId(value: string): string {
-  const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  return normalized || encodeURIComponent(value.trim()).replace(/%/g, '').toLowerCase() || 'unknown';
 }
 
 async function saveCloudBooking(draft: BookingDraft, users: User[], groups: Array<{ id: string; name: string }>): Promise<Booking> {
