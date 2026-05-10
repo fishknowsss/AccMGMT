@@ -1,0 +1,9 @@
+name = "accmgmt"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-05-09"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "accmgmt"
+database_id = "f9430df1-a23e-4ba8-9f8b-55cb97d2b9ae"
+preview_database_id = "accmgmt"
