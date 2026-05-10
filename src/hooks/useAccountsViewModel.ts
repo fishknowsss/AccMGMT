@@ -425,7 +425,11 @@ export function useAccountsViewModel() {
       return { ok: false, reason: validation.reason };
     }
 
+    const fallbackGroupId = groups.find((group) => group.id !== groupId)?.id ?? '';
     setGroups((current) => current.filter((group) => group.id !== groupId));
+    setUsers((current) =>
+      current.map((user) => (user.groupId === groupId ? { ...user, groupId: fallbackGroupId } : user)),
+    );
     setToast('小组已删除。');
     return { ok: true };
   }

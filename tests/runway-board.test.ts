@@ -297,9 +297,9 @@ describe('member and group editing rules', () => {
     expect(validateUserDeletion('user-1', [booking({})])).toEqual({ ok: false, reason: '这个成员已有预约，不能删除' });
   });
 
-  it('allows deleting only empty groups that are not referenced by members or bookings', () => {
+  it('allows deleting groups with members but blocks groups referenced by bookings', () => {
     expect(validateGroupDeletion('group-empty', users, [])).toEqual({ ok: true, value: 'group-empty' });
-    expect(validateGroupDeletion('group-a', users, [])).toEqual({ ok: false, reason: '这个小组还有成员，不能删除' });
+    expect(validateGroupDeletion('group-a', users, [])).toEqual({ ok: true, value: 'group-a' });
     expect(validateGroupDeletion('group-c', [], [booking({ groupId: 'group-c' })])).toEqual({ ok: false, reason: '这个小组已有预约，不能删除' });
   });
 });

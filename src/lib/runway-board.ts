@@ -265,11 +265,7 @@ export function validateUserDeletion(userId: string, bookings: Booking[]): Valid
   return { ok: true, value: userId };
 }
 
-export function validateGroupDeletion(groupId: string, users: User[], bookings: Booking[]): ValidationResult<string> {
-  if (users.some((user) => user.groupId === groupId)) {
-    return { ok: false, reason: '这个小组还有成员，不能删除' };
-  }
-
+export function validateGroupDeletion(groupId: string, _users: User[], bookings: Booking[]): ValidationResult<string> {
   if (bookings.some((booking) => booking.groupId === groupId)) {
     return { ok: false, reason: '这个小组已有预约，不能删除' };
   }
