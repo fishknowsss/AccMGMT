@@ -179,6 +179,31 @@ describe('validateBookingDraft', () => {
       expect(result.reason).toContain('下一预约');
     }
   });
+  it('blocks a third concurrent account booking for the same user', () => {
+    const result = validateBookingDraft(
+      {
+        accountId: 'account-2',
+        userId: 'user-1',
+        groupId: 'group-a',
+        projectName: '广告片',
+        startTime: '2026-05-09T09:30:00.000Z',
+        endTime: '2026-05-09T12:00:00.000Z',
+      },
+      {
+        bookings: [
+          booking({}),
+          booking({ id: 'booking-2', accountId: 'account-3', startTime: '2026-05-09T09:30:00.000Z', endTime: '2026-05-09T11:30:00.000Z' }),
+        ],
+        mode: 'reserve',
+        now,
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toContain('2 个账号');
+    }
+  });
 });
 
 describe('buildAccountsView', () => {
@@ -254,11 +279,17 @@ describe('member and group editing rules', () => {
     expect(validateGroupDraft({ name: 'A组' }, groups)).toEqual({ ok: false, reason: '这个小组已经存在' });
   });
 
-  it('validates member name, email, group, and duplicate email', () => {
+  it('validates member name and group (email is optional)', () => {
     expect(validateUserDraft({ name: ' 小周 ', email: ' zhou@example.com ', groupId: 'group-a' }, users, groups)).toEqual({
       ok: true,
       value: { name: '小周', email: 'zhou@example.com', groupId: 'group-a', isActive: true },
     });
+    // email is optional — omitting it should still pass
+    expect(validateUserDraft({ name: '小周', groupId: 'group-a' }, users, groups)).toEqual({
+      ok: true,
+      value: { name: '小周', email: '', groupId: 'group-a', isActive: true },
+    });
+    // duplicate email is still checked when provided
     expect(validateUserDraft({ name: '小周', email: 'wang@example.com', groupId: 'group-a' }, users, groups)).toEqual({
       ok: false,
       reason: '这个邮箱已经存在',

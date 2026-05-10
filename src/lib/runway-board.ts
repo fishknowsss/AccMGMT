@@ -105,7 +105,7 @@ type ValidationResult<T> = { ok: true; value: T } | { ok: false; reason: string;
 
 export type UserDraft = {
   name: string;
-  email: string;
+  email?: string;
   groupId: string;
   isActive?: boolean;
 };
@@ -199,6 +199,18 @@ export function validateBookingDraft(draft: BookingDraft, context: BookingValida
     return { ok: false, reason: '该时间段与已有预约冲突', conflict };
   }
 
+  const concurrentCount = context.bookings.filter(
+    (b) =>
+      b.userId === value.userId &&
+      b.status === 'confirmed' &&
+      timestamp(b.startTime) < timestamp(value.endTime) &&
+      timestamp(b.endTime) > timestamp(value.startTime),
+  ).length;
+
+  if (concurrentCount >= 2) {
+    return { ok: false, reason: '该成员在此时间段已占用 2 个账号' };
+  }
+
   return { ok: true, value };
 }
 
@@ -223,7 +235,7 @@ export function validateGroupDraft(draft: GroupDraft, groups: Group[], editingGr
 export function validateUserDraft(draft: UserDraft, users: User[], groups: Group[], editingUserId?: string): ValidationResult<Required<UserDraft>> {
   const value = {
     name: draft.name.trim(),
-    email: draft.email.trim(),
+    email: draft.email?.trim() ?? '',
     groupId: draft.groupId.trim(),
     isActive: draft.isActive ?? true,
   };
@@ -232,17 +244,15 @@ export function validateUserDraft(draft: UserDraft, users: User[], groups: Group
     return { ok: false, reason: '请填写成员姓名' };
   }
 
-  if (!value.email) {
-    return { ok: false, reason: '请填写成员邮箱' };
-  }
-
   if (!groups.some((group) => group.id === value.groupId)) {
     return { ok: false, reason: '请选择小组' };
   }
 
-  const duplicate = users.some((user) => user.id !== editingUserId && user.email.trim().toLowerCase() === value.email.toLowerCase());
-  if (duplicate) {
-    return { ok: false, reason: '这个邮箱已经存在' };
+  if (value.email) {
+    const duplicate = users.some((user) => user.id !== editingUserId && user.email.trim().toLowerCase() === value.email.toLowerCase());
+    if (duplicate) {
+      return { ok: false, reason: '这个邮箱已经存在' };
+    }
   }
 
   return { ok: true, value };

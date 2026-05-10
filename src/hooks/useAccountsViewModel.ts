@@ -571,7 +571,7 @@ function createUseNowForm(accountId: string, bookings: Booking[], now: Date, def
   start.setSeconds(0, 0);
   const runtime = getAccountRuntime(accountId, bookings, now);
   const nextStart = runtime.next ? new Date(runtime.next.startTime) : null;
-  const defaultEnd = addHours(start, 2);
+  const defaultEnd = addHours(start, 4);
   const end = nextStart && defaultEnd > nextStart ? nextStart : defaultEnd;
 
   return {
@@ -587,7 +587,7 @@ function createUseNowForm(accountId: string, bookings: Booking[], now: Date, def
 
 function createBookingForm(accountId: string, now: Date, defaultUser: User): BookingFormState {
   const start = roundToNextFiveMinutes(addHours(now, 1));
-  const end = addHours(start, 2);
+  const end = addHours(start, 4);
 
   return {
     accountId,

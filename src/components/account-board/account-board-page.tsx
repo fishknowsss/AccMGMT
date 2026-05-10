@@ -540,7 +540,7 @@ function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: Boar
 
 function MemberEditorSection({ model }: { model: BoardModel }) {
   const defaultGroupId = model.activeGroups[0]?.id ?? model.groups[0]?.id ?? '';
-  const [draft, setDraft] = useState({ name: '', email: '', groupId: defaultGroupId, isActive: true });
+  const [draft, setDraft] = useState({ name: '', groupId: defaultGroupId, isActive: true });
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -553,7 +553,7 @@ function MemberEditorSection({ model }: { model: BoardModel }) {
       setError(result.reason);
       return;
     }
-    setDraft({ name: '', email: '', groupId: defaultGroupId, isActive: true });
+    setDraft({ name: '', groupId: defaultGroupId, isActive: true });
     setError('');
   }
 
@@ -564,12 +564,9 @@ function MemberEditorSection({ model }: { model: BoardModel }) {
         <span className="font-mono text-sm tabular-nums text-[#667085]">{model.activeUsers.length} 位成员</span>
       </div>
       <div className="grid shrink-0 gap-3 border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-4">
-        <div className="grid gap-3 xl:grid-cols-[120px_minmax(220px,1fr)_150px_80px]">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_80px]">
           <Field label="姓名">
             <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-          </Field>
-          <Field label="邮箱">
-            <Input value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
           </Field>
           <Field label="小组">
             <GroupSelect groups={model.activeGroups} value={draft.groupId} onChange={(groupId) => setDraft({ ...draft, groupId })} />
@@ -580,7 +577,7 @@ function MemberEditorSection({ model }: { model: BoardModel }) {
         </div>
         {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{error}</div> : null}
       </div>
-      <div className="grid min-h-0 flex-1 divide-y divide-[#EEF2F6] overflow-y-auto">
+      <div className="grid min-h-0 flex-1 divide-y divide-[#EEF2F6] overflow-y-scroll [scrollbar-gutter:stable]">
         {model.users.map((user) => (
           <MemberEditor groups={model.activeGroups} key={user.id} onDelete={model.deleteUser} onSave={model.updateUser} user={user} />
         ))}
@@ -609,9 +606,8 @@ function MemberEditor({ groups, onDelete, onSave, user }: { groups: Group[]; onD
   }
 
   return (
-    <article className="grid gap-3 px-5 py-4 xl:grid-cols-[120px_minmax(220px,1fr)_150px_100px_40px] xl:items-center">
+    <article className="grid items-center gap-x-3 gap-y-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_160px_80px_40px]">
       <Input value={draft.name} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-      <Input value={draft.email} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
       <GroupSelect
         groups={groups}
         value={draft.groupId}
@@ -639,7 +635,7 @@ function MemberEditor({ groups, onDelete, onSave, user }: { groups: Group[]; onD
       <Button aria-label="删除成员" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={handleDelete} size="icon" type="button" variant="ghost">
         <Trash2 size={16} />
       </Button>
-      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] xl:col-span-5">{error}</div> : null}
+      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] sm:col-span-4">{error}</div> : null}
     </article>
   );
 }

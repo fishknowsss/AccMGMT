@@ -5,23 +5,11 @@ import { type BookingFormState } from '../../hooks/useAccountsViewModel';
 import { Button } from '../ui/button';
 import { Dialog } from '../ui/dialog';
 import { Field, Input, Select } from '../ui/field';
+import { DurationStepper } from '../ui/duration-stepper';
 
-const DURATION_OPTIONS = [
-  { label: '30 分钟', value: 0.5 },
-  { label: '1 小时', value: 1 },
-  { label: '2 小时', value: 2 },
-  { label: '3 小时', value: 3 },
-  { label: '4 小时', value: 4 },
-  { label: '6 小时', value: 6 },
-  { label: '8 小时', value: 8 },
-  { label: '12 小时', value: 12 },
-  { label: '24 小时', value: 24 },
-];
-
-function getDurationHours(startTime: string, endTime: string): number {
+function computeDuration(startTime: string, endTime: string): number {
   const diff = (new Date(endTime).getTime() - new Date(startTime).getTime()) / 3_600_000;
-  const match = DURATION_OPTIONS.find((opt) => Math.abs(opt.value - diff) < 0.01);
-  return match ? match.value : 2;
+  return Math.max(0.5, Math.min(24, Math.round(diff * 2) / 2));
 }
 
 type BookingDialogProps = {
@@ -35,7 +23,7 @@ type BookingDialogProps = {
 };
 
 export function BookingDialog({ form, account, users, groups, onChange, onClose, onSubmit }: BookingDialogProps) {
-  const durationHours = getDurationHours(form.startTime, form.endTime);
+  const durationHours = computeDuration(form.startTime, form.endTime);
 
   function handleStartTimeChange(startTime: string) {
     const newEnd = toLocalInputValue(addHours(new Date(startTime), durationHours));
@@ -99,13 +87,7 @@ export function BookingDialog({ form, account, users, groups, onChange, onClose,
             <Input onChange={(event) => handleStartTimeChange(event.target.value)} required type="datetime-local" value={form.startTime} />
           </Field>
           <Field label="使用时长">
-            <Select onChange={(event) => handleDurationChange(Number(event.target.value))} value={String(durationHours)}>
-              {DURATION_OPTIONS.map((opt) => (
-                <option key={opt.value} value={String(opt.value)}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
+            <DurationStepper onChange={handleDurationChange} value={durationHours} />
           </Field>
         </div>
         {form.error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{form.error}</div> : null}
