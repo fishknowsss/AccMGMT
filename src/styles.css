@@ -23,14 +23,20 @@
 
 html {
   background: #f7f8fa;
-  overflow-y: scroll;
+  height: 100%;
+  overflow: hidden;
   scrollbar-gutter: stable;
 }
 
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
 }
 
 button,

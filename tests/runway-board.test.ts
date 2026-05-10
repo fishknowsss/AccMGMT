@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildAccountsView,
-  canUserReleaseBooking,
+  canReleaseBooking,
   findBookingConflict,
+  fromLocalInputValue,
+  getActiveGroups,
+  getActiveUsers,
   getAccountRuntime,
   getNextAccountLabel,
+  validateGroupDeletion,
+  validateGroupDraft,
+  validateUserDeletion,
+  validateUserDraft,
   validateBookingDraft,
   type Account,
   type Booking,
@@ -39,8 +46,8 @@ const groups: Group[] = [
 ];
 
 const users: User[] = [
-  { id: 'user-1', name: '小王', email: 'wang@example.com', groupId: 'group-a', role: 'member' },
-  { id: 'user-2', name: '小林', email: 'lin@example.com', groupId: 'group-b', role: 'admin' },
+  { id: 'user-1', name: '小王', email: 'wang@example.com', groupId: 'group-a' },
+  { id: 'user-2', name: '小林', email: 'lin@example.com', groupId: 'group-b' },
 ];
 
 const booking = (partial: Partial<Booking>): Booking => ({
@@ -126,6 +133,29 @@ describe('findBookingConflict', () => {
 });
 
 describe('validateBookingDraft', () => {
+  it('returns a validation error instead of throwing when local time input is empty', () => {
+    const result = validateBookingDraft(
+      {
+        accountId: 'account-1',
+        userId: 'user-1',
+        groupId: 'group-a',
+        projectName: '广告片',
+        startTime: fromLocalInputValue(''),
+        endTime: '2026-05-09T13:00:00.000Z',
+      },
+      {
+        bookings: [],
+        mode: 'reserve',
+        now,
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toBe('时间格式不正确');
+    }
+  });
+
   it('blocks immediate use when the end time is later than the next booking start', () => {
     const result = validateBookingDraft(
       {
@@ -158,7 +188,6 @@ describe('buildAccountsView', () => {
       bookings: [booking({})],
       users,
       groups,
-      currentUser: users[0],
       now,
       filters: {
         query: 'runway01',
@@ -174,19 +203,33 @@ describe('buildAccountsView', () => {
     expect(view.rows).toHaveLength(1);
     expect(view.rows[0].account.label).toBe('R-01');
   });
+
+  it('allows any visitor to release an occupied account from the board', () => {
+    const view = buildAccountsView({
+      accounts,
+      bookings: [booking({ userId: users[1].id, groupId: users[1].groupId })],
+      users,
+      groups,
+      now,
+      filters: {
+        query: '',
+        status: 'all',
+        groupId: 'all',
+        renewal: 'all',
+      },
+    });
+
+    expect(view.rows[0].canRelease).toBe(true);
+  });
 });
 
-describe('canUserReleaseBooking', () => {
-  it('allows members to release their own current booking', () => {
-    expect(canUserReleaseBooking(booking({ userId: users[0].id }), users[0])).toBe(true);
+describe('canReleaseBooking', () => {
+  it('allows visitors to release their own current booking', () => {
+    expect(canReleaseBooking(booking({ userId: users[0].id }))).toBe(true);
   });
 
-  it('blocks members from releasing other members bookings', () => {
-    expect(canUserReleaseBooking(booking({ userId: users[1].id }), users[0])).toBe(false);
-  });
-
-  it('allows admins to release any current booking', () => {
-    expect(canUserReleaseBooking(booking({ userId: users[0].id }), users[1])).toBe(true);
+  it('allows visitors to release other peoples current bookings', () => {
+    expect(canReleaseBooking(booking({ userId: users[0].id }))).toBe(true);
   });
 });
 
@@ -202,5 +245,61 @@ describe('getNextAccountLabel', () => {
         { ...accounts[1], label: 'R-07' },
       ]),
     ).toBe('R-08');
+  });
+});
+
+describe('member and group editing rules', () => {
+  it('validates a new group name and rejects duplicates', () => {
+    expect(validateGroupDraft({ name: ' D组 ' }, groups)).toEqual({ ok: true, value: { name: 'D组', isActive: true } });
+    expect(validateGroupDraft({ name: 'A组' }, groups)).toEqual({ ok: false, reason: '这个小组已经存在' });
+  });
+
+  it('validates member name, email, group, and duplicate email', () => {
+    expect(validateUserDraft({ name: ' 小周 ', email: ' zhou@example.com ', groupId: 'group-a' }, users, groups)).toEqual({
+      ok: true,
+      value: { name: '小周', email: 'zhou@example.com', groupId: 'group-a', isActive: true },
+    });
+    expect(validateUserDraft({ name: '小周', email: 'wang@example.com', groupId: 'group-a' }, users, groups)).toEqual({
+      ok: false,
+      reason: '这个邮箱已经存在',
+    });
+  });
+
+  it('keeps inactive members out of new booking choices while preserving existing booking display', () => {
+    const inactiveUsers: User[] = [{ ...users[0], isActive: false }, users[1]];
+    const view = buildAccountsView({
+      accounts,
+      bookings: [booking({})],
+      users: inactiveUsers,
+      groups,
+      now,
+      filters: {
+        query: '',
+        status: 'all',
+        groupId: 'all',
+        renewal: 'all',
+      },
+    });
+
+    expect(getActiveUsers(inactiveUsers).map((user) => user.id)).toEqual(['user-2']);
+    expect(view.rows[0].current?.user?.name).toBe('小王');
+  });
+
+  it('hides inactive empty groups from new choices but keeps groups with active members', () => {
+    const editableGroups: Group[] = [{ ...groups[0], isActive: false }, { ...groups[1], isActive: false }];
+    const editableUsers: User[] = [{ ...users[0], isActive: true }, { ...users[1], isActive: false }];
+
+    expect(getActiveGroups(editableGroups, editableUsers).map((group) => group.id)).toEqual(['group-a']);
+  });
+
+  it('allows deleting only members that are not referenced by bookings', () => {
+    expect(validateUserDeletion('user-2', [])).toEqual({ ok: true, value: 'user-2' });
+    expect(validateUserDeletion('user-1', [booking({})])).toEqual({ ok: false, reason: '这个成员已有预约，不能删除' });
+  });
+
+  it('allows deleting only empty groups that are not referenced by members or bookings', () => {
+    expect(validateGroupDeletion('group-empty', users, [])).toEqual({ ok: true, value: 'group-empty' });
+    expect(validateGroupDeletion('group-a', users, [])).toEqual({ ok: false, reason: '这个小组还有成员，不能删除' });
+    expect(validateGroupDeletion('group-c', [], [booking({ groupId: 'group-c' })])).toEqual({ ok: false, reason: '这个小组已有预约，不能删除' });
   });
 });

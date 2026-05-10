@@ -38,16 +38,14 @@ describe('mapCloudSnapshot', () => {
           name: '小王',
           email: 'wang@studio.local',
           groupId: 'group-a',
-          role: 'member',
         },
       ],
       groups: [{ id: 'group-a', name: 'A组' }],
-      currentUser: {
+      defaultUser: {
         id: 'user-wang',
         name: '小王',
         email: 'wang@studio.local',
         groupId: 'group-a',
-        role: 'member',
       },
     });
 
@@ -86,12 +84,11 @@ describe('mapCloudSnapshot', () => {
       ],
       users: [],
       groups: [],
-      currentUser: {
+      defaultUser: {
         id: 'user-wang',
         name: '小王',
         email: 'wang@studio.local',
         groupId: 'group-a',
-        role: 'member',
       },
     });
 

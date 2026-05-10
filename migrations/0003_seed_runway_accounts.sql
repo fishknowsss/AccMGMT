@@ -1,0 +1,32 @@
+INSERT INTO accounts (id, email, label, renewal_date, is_active, sort_order)
+VALUES
+  ('account-1', 'RaeLopez75097@outlook.com', 'R-01', NULL, 1, 1),
+  ('account-2', 'GabrielleShell101444@outlook.com', 'R-02', NULL, 1, 2),
+  ('account-3', 'JoanneMerino63875@outlook.com', 'R-03', NULL, 1, 3),
+  ('account-4', 'GraceCain80741@outlook.com', 'R-04', NULL, 1, 4),
+  ('account-5', 'KfocahZmlscy479999@outlook.com', 'R-05', NULL, 1, 5),
+  ('account-6', 'GlendaMattice85518@outlook.com', 'R-06', NULL, 1, 6),
+  ('account-7', 'AnnaWalzer8658@outlook.com', 'R-07', NULL, 1, 7),
+  ('account-8', 'TcbmwXhat6440@outlook.com', 'R-08', NULL, 1, 8),
+  ('account-9', 'PknhQebpiv097920@outlook.com', 'R-09', NULL, 1, 9),
+  ('account-10', 'KennethHernandez74421@outlook.com', 'R-10', NULL, 1, 10),
+  ('account-11', 'JosephDillon7994@outlook.com', 'R-11', NULL, 1, 11),
+  ('account-12', 'LjrhDkubg843141@outlook.com', 'R-12', NULL, 1, 12),
+  ('account-13', 'NicoleHale0973@outlook.com', 'R-13', NULL, 1, 13),
+  ('account-14', 'DorothyNicolaou372942@outlook.com', 'R-14', NULL, 1, 14),
+  ('account-15', 'MznofEdayye28106@outlook.com', 'R-15', NULL, 1, 15),
+  ('account-16', 'LesterJohnson3767@outlook.com', 'R-16', NULL, 1, 16),
+  ('account-17', 'UqltxxWtzxy8813@outlook.com', 'R-17', NULL, 1, 17),
+  ('account-18', 'EmilyPaez1015@outlook.com', 'R-18', NULL, 1, 18),
+  ('account-19', 'XpmfdlAjrbp706588@outlook.com', 'R-19', NULL, 1, 19),
+  ('account-20', 'XycixrQhcvk991241@outlook.com', 'R-20', NULL, 1, 20),
+  ('account-21', 'RichardCarter205621@outlook.com', 'R-21', NULL, 1, 21),
+  ('account-22', 'FwlwbTankv91206@outlook.com', 'R-22', NULL, 1, 22),
+  ('account-23', 'JamesHowell244774@outlook.com', 'R-23', NULL, 1, 23),
+  ('account-24', 'LeonaCox646320@outlook.com', 'R-24', NULL, 1, 24)
+ON CONFLICT(id) DO UPDATE SET
+  email = excluded.email,
+  label = excluded.label,
+  is_active = excluded.is_active,
+  sort_order = excluded.sort_order,
+  updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now');

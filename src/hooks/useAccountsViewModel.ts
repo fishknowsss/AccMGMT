@@ -6,15 +6,23 @@ import {
   emptyFilters,
   fromLocalInputValue,
   getAccountRuntime,
+  getActiveGroups,
+  getActiveUsers,
   getNextAccountLabel,
   roundToNextFiveMinutes,
   toLocalInputValue,
+  validateGroupDeletion,
+  validateGroupDraft,
   validateBookingDraft,
+  validateUserDeletion,
+  validateUserDraft,
   type Account,
   type AccountFiltersState,
   type Booking,
   type BookingDraft,
+  type GroupDraft,
   type User,
+  type UserDraft,
 } from '../lib/runway-board';
 import { createMockSnapshot } from '../lib/runway-mock';
 import {
@@ -29,6 +37,7 @@ import {
 
 export type UseNowFormState = {
   accountId: string;
+  userId: string;
   groupId: string;
   projectName: string;
   startTime: string;
@@ -53,7 +62,8 @@ export type AccountDraftState = {
   isActive: boolean;
 };
 
-const currentUserStorageKey = 'accmgmt.currentUserId';
+export type MemberDraftState = UserDraft;
+export type GroupDraftState = GroupDraft;
 
 export function useAccountsViewModel() {
   const [snapshot] = useState(() => createMockSnapshot());
@@ -62,7 +72,6 @@ export function useAccountsViewModel() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers] = useState<User[]>(snapshot.users);
   const [groups, setGroups] = useState(snapshot.groups);
-  const [currentUserId, setCurrentUserIdState] = useState(() => readStoredCurrentUserId() ?? snapshot.currentUser.id);
   const [filters, setFilters] = useState<AccountFiltersState>(emptyFilters);
   const [now, setNow] = useState(() => new Date());
   const [notice, setNotice] = useState('');
@@ -88,11 +97,6 @@ export function useAccountsViewModel() {
         setUsers(cloudSnapshot.users);
         setGroups(cloudSnapshot.groups);
         setIsLoading(false);
-        setCurrentUserIdState((current) => {
-          const next = cloudSnapshot.users.some((user) => user.id === current) ? current : cloudSnapshot.currentUser.id;
-          persistCurrentUserId(next);
-          return next;
-        });
       })
       .catch(() => {
         if (cancelled) {
@@ -103,7 +107,6 @@ export function useAccountsViewModel() {
         setBookings(snapshot.bookings);
         setUsers(snapshot.users);
         setGroups(snapshot.groups);
-        setCurrentUserIdState(snapshot.currentUser.id);
         setIsLoading(false);
       });
 
@@ -112,9 +115,12 @@ export function useAccountsViewModel() {
     };
   }, [snapshot]);
 
-  const currentUser = useMemo(() => {
-    return users.find((user) => user.id === currentUserId) ?? users[0] ?? snapshot.currentUser;
-  }, [currentUserId, snapshot.currentUser, users]);
+  const activeUsers = useMemo(() => getActiveUsers(users), [users]);
+  const activeGroups = useMemo(() => getActiveGroups(groups, users), [groups, users]);
+
+  const defaultUser = useMemo(() => {
+    return activeUsers.find((user) => user.id === snapshot.defaultUser.id) ?? activeUsers[0] ?? users[0] ?? snapshot.defaultUser;
+  }, [activeUsers, snapshot.defaultUser, users]);
 
   const view = useMemo(
     () =>
@@ -123,11 +129,10 @@ export function useAccountsViewModel() {
         bookings,
         users,
         groups,
-        currentUser,
         now,
         filters,
       }),
-    [accounts, bookings, currentUser, filters, groups, now, users],
+    [accounts, bookings, filters, groups, now, users],
   );
 
   const accountById = useMemo(() => new Map(accounts.map((account) => [account.id, account])), [accounts]);
@@ -137,30 +142,29 @@ export function useAccountsViewModel() {
     setFilters((current) => ({ ...current, ...next }));
   }
 
-  function setCurrentUserId(userId: string) {
-    const user = users.find((item) => item.id === userId);
-    if (!user) {
-      setNotice('成员不存在。');
-      return;
-    }
-
-    persistCurrentUserId(user.id);
-    setCurrentUserIdState(user.id);
-    setNotice(`当前成员已切换为 ${user.name}。`);
-  }
-
   function openUseNow(accountId: string) {
     setNotice('');
-    setUseNowForm(createUseNowForm(accountId, bookings, now, currentUser));
+    setUseNowForm(createUseNowForm(accountId, bookings, now, defaultUser));
   }
 
   function openBooking(accountId: string) {
     setNotice('');
-    setBookingForm(createBookingForm(accountId, now, currentUser));
+    setBookingForm(createBookingForm(accountId, now, defaultUser));
   }
 
   function updateUseNowForm(next: Partial<UseNowFormState>) {
-    setUseNowForm((current) => (current ? { ...current, ...next, error: next.error ?? '' } : current));
+    setUseNowForm((current) => {
+      if (!current) {
+        return current;
+      }
+
+      if (next.userId && next.userId !== current.userId) {
+        const user = userById.get(next.userId);
+        return { ...current, ...next, groupId: user?.groupId ?? current.groupId, error: '' };
+      }
+
+      return { ...current, ...next, error: next.error ?? '' };
+    });
   }
 
   function updateBookingForm(next: Partial<BookingFormState>) {
@@ -185,7 +189,7 @@ export function useAccountsViewModel() {
 
     const draft: BookingDraft = {
       accountId: useNowForm.accountId,
-      userId: currentUser.id,
+      userId: useNowForm.userId,
       groupId: useNowForm.groupId,
       projectName: useNowForm.projectName,
       startTime: fromLocalInputValue(useNowForm.startTime),
@@ -255,11 +259,6 @@ export function useAccountsViewModel() {
   }
 
   async function releaseBooking(booking: Booking) {
-    if (currentUser.role !== 'admin' && booking.userId !== currentUser.id) {
-      setNotice('只能结束自己的使用。');
-      return;
-    }
-
     try {
       const cloudBooking = await releaseCloudBooking(booking.id);
       setBookings((current) =>
@@ -291,7 +290,7 @@ export function useAccountsViewModel() {
     }
 
     setFilters({ ...emptyFilters, query: account.email });
-    setUseNowForm(createUseNowForm(account.id, bookings, now, currentUser));
+    setUseNowForm(createUseNowForm(account.id, bookings, now, defaultUser));
     setNotice(`已找到 ${account.label}。`);
   }
 
@@ -379,6 +378,80 @@ export function useAccountsViewModel() {
     }
   }
 
+  function createGroup(draft: GroupDraftState): { ok: true } | { ok: false; reason: string } {
+    const validation = validateGroupDraft(draft, groups);
+    if (!validation.ok) {
+      return { ok: false, reason: validation.reason };
+    }
+
+    const group = {
+      id: nextEntityId('group', validation.value.name, groups.map((item) => item.id)),
+      ...validation.value,
+    };
+    setGroups((current) => [...current, group]);
+    setNotice('小组已新增。');
+    return { ok: true };
+  }
+
+  function updateGroup(groupId: string, draft: GroupDraftState): { ok: true } | { ok: false; reason: string } {
+    const validation = validateGroupDraft(draft, groups, groupId);
+    if (!validation.ok) {
+      return { ok: false, reason: validation.reason };
+    }
+
+    setGroups((current) => current.map((group) => (group.id === groupId ? { ...group, ...validation.value } : group)));
+    setNotice('小组已更新。');
+    return { ok: true };
+  }
+
+  function deleteGroup(groupId: string): { ok: true } | { ok: false; reason: string } {
+    const validation = validateGroupDeletion(groupId, users, bookings);
+    if (!validation.ok) {
+      return { ok: false, reason: validation.reason };
+    }
+
+    setGroups((current) => current.filter((group) => group.id !== groupId));
+    setNotice('小组已删除。');
+    return { ok: true };
+  }
+
+  function createUser(draft: MemberDraftState): { ok: true } | { ok: false; reason: string } {
+    const validation = validateUserDraft(draft, users, groups);
+    if (!validation.ok) {
+      return { ok: false, reason: validation.reason };
+    }
+
+    const user = {
+      id: nextEntityId('user', validation.value.email || validation.value.name, users.map((item) => item.id)),
+      ...validation.value,
+    };
+    setUsers((current) => [...current, user]);
+    setNotice('成员已新增。');
+    return { ok: true };
+  }
+
+  function updateUser(userId: string, draft: MemberDraftState): { ok: true } | { ok: false; reason: string } {
+    const validation = validateUserDraft(draft, users, groups, userId);
+    if (!validation.ok) {
+      return { ok: false, reason: validation.reason };
+    }
+
+    setUsers((current) => current.map((user) => (user.id === userId ? { ...user, ...validation.value } : user)));
+    setNotice('成员已更新。');
+    return { ok: true };
+  }
+
+  function deleteUser(userId: string): { ok: true } | { ok: false; reason: string } {
+    const validation = validateUserDeletion(userId, bookings);
+    if (!validation.ok) {
+      return { ok: false, reason: validation.reason };
+    }
+
+    setUsers((current) => current.filter((user) => user.id !== userId));
+    setNotice('成员已删除。');
+    return { ok: true };
+  }
+
   function getEmptyAccountDraft(): AccountDraftState {
     return {
       email: '',
@@ -392,8 +465,8 @@ export function useAccountsViewModel() {
     accounts,
     users,
     groups,
-    currentUser,
-    currentUserId: currentUser.id,
+    activeUsers,
+    activeGroups,
     isLoading,
     now,
     filters,
@@ -402,7 +475,6 @@ export function useAccountsViewModel() {
     useNowForm,
     bookingForm,
     accountById,
-    setCurrentUserId,
     updateFilters,
     openUseNow,
     openBooking,
@@ -414,10 +486,34 @@ export function useAccountsViewModel() {
     findAvailableAccount,
     updateAccount,
     createAccount,
+    createGroup,
+    updateGroup,
+    deleteGroup,
+    createUser,
+    updateUser,
+    deleteUser,
     getEmptyAccountDraft,
     closeUseNow: () => setUseNowForm(null),
     closeBooking: () => setBookingForm(null),
   };
+}
+
+function nextEntityId(prefix: 'group' | 'user', value: string, existingIds: string[]): string {
+  const base = `${prefix}-${slugId(value)}`;
+  if (!existingIds.includes(base)) {
+    return base;
+  }
+
+  let index = 2;
+  while (existingIds.includes(`${base}-${index}`)) {
+    index += 1;
+  }
+  return `${base}-${index}`;
+}
+
+function slugId(value: string): string {
+  const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return normalized || encodeURIComponent(value.trim()).replace(/%/g, '').toLowerCase() || 'unknown';
 }
 
 async function saveCloudBooking(draft: BookingDraft, users: User[], groups: Array<{ id: string; name: string }>): Promise<Booking> {
@@ -459,27 +555,11 @@ function getOperatorPin(): string {
   return pin;
 }
 
-function readStoredCurrentUserId(): string | null {
-  try {
-    return window.localStorage.getItem(currentUserStorageKey);
-  } catch {
-    return null;
-  }
-}
-
-function persistCurrentUserId(userId: string) {
-  try {
-    window.localStorage.setItem(currentUserStorageKey, userId);
-  } catch {
-    // Some embedded previews can block localStorage.
-  }
-}
-
 function todayDateInputValue(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function createUseNowForm(accountId: string, bookings: Booking[], now: Date, currentUser: User): UseNowFormState {
+function createUseNowForm(accountId: string, bookings: Booking[], now: Date, defaultUser: User): UseNowFormState {
   const start = new Date(now);
   start.setSeconds(0, 0);
   const runtime = getAccountRuntime(accountId, bookings, now);
@@ -489,7 +569,8 @@ function createUseNowForm(accountId: string, bookings: Booking[], now: Date, cur
 
   return {
     accountId,
-    groupId: currentUser.groupId,
+    userId: defaultUser.id,
+    groupId: defaultUser.groupId,
     projectName: '',
     startTime: toLocalInputValue(start),
     endTime: toLocalInputValue(end),
@@ -497,14 +578,14 @@ function createUseNowForm(accountId: string, bookings: Booking[], now: Date, cur
   };
 }
 
-function createBookingForm(accountId: string, now: Date, currentUser: User): BookingFormState {
+function createBookingForm(accountId: string, now: Date, defaultUser: User): BookingFormState {
   const start = roundToNextFiveMinutes(addHours(now, 1));
   const end = addHours(start, 2);
 
   return {
     accountId,
-    userId: currentUser.id,
-    groupId: currentUser.groupId,
+    userId: defaultUser.id,
+    groupId: defaultUser.groupId,
     projectName: '',
     startTime: toLocalInputValue(start),
     endTime: toLocalInputValue(end),

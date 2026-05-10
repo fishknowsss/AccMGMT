@@ -1,5 +1,5 @@
 import { CalendarPlus, Play, Square } from 'lucide-react';
-import { type AccountRow } from '../../lib/runway-board';
+import { formatBookingRange, type AccountRow } from '../../lib/runway-board';
 import { Button } from '../ui/button';
 import { RenewalBadge } from './renewal-badge';
 import { StatusBadge } from './status-badge';
@@ -14,22 +14,23 @@ type AccountTableProps = {
 
 export function AccountTable({ rows, now, onUseNow, onReserve, onRelease }: AccountTableProps) {
   return (
-    <section className="overflow-hidden rounded-[18px] border border-[#DDE3EA] bg-white shadow-[0_18px_44px_rgba(52,64,84,0.07)]">
+    <section className="overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
       <div className="flex items-center justify-between border-b border-[#E6EAF0] bg-[#FCFDFE] px-4 py-3">
         <div>
-          <h2 className="text-base font-semibold text-[#171A1F]">账号池名称</h2>
+          <h2 className="text-base font-semibold text-[#171A1F]">Runway 账号</h2>
         </div>
         <span className="font-mono text-sm tabular-nums text-[#667085]">{rows.length} 个账号</span>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[980px] border-collapse text-left">
+        <table className="w-full min-w-[1060px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[#E7EAF0] bg-[#F7F9FB] text-[13px] font-semibold text-[#667085]">
-              <th className="w-[285px] px-4 py-3">账号</th>
-              <th className="w-[210px] px-4 py-3">占用状态</th>
-              <th className="w-[190px] px-4 py-3">使用信息</th>
-              <th className="w-[150px] px-4 py-3">续费日期</th>
-              <th className="w-[210px] px-4 py-3 text-right">操作</th>
+              <th className="w-[250px] px-4 py-3">账号</th>
+              <th className="w-[175px] px-4 py-3">状态</th>
+              <th className="w-[180px] px-4 py-3">当前使用</th>
+              <th className="w-[190px] px-4 py-3">下一预约</th>
+              <th className="w-[135px] px-4 py-3">续费日期</th>
+              <th className="w-[170px] px-4 py-3 text-right">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -64,7 +65,19 @@ export function AccountTable({ rows, now, onUseNow, onReserve, onRelease }: Acco
                       </span>
                     </div>
                   ) : (
-                    <span className="text-[#8A93A3]">-</span>
+                    <span className="text-sm text-[#8A93A3]">暂无占用</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {row.next ? (
+                    <div className="grid gap-1">
+                      <span className="font-mono text-sm tabular-nums text-[#344154]">{formatBookingRange(row.next.startTime, row.next.endTime, now)}</span>
+                      <span className="text-sm text-[#667085]">
+                        {row.next.user?.name ?? '未知成员'} · {row.next.projectName}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-[#8A93A3]">暂无预约</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
@@ -93,7 +106,7 @@ export function AccountTable({ rows, now, onUseNow, onReserve, onRelease }: Acco
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td className="h-28 px-4 text-center text-sm text-[#667080]" colSpan={5}>
+                <td className="h-28 px-4 text-center text-sm text-[#667080]" colSpan={6}>
                   调整筛选条件。
                 </td>
               </tr>

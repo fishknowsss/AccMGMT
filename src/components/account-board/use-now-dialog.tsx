@@ -8,14 +8,14 @@ import { type UseNowFormState } from '../../hooks/useAccountsViewModel';
 type UseNowDialogProps = {
   form: UseNowFormState;
   account: Account | undefined;
-  currentUser: User;
+  users: User[];
   groups: Group[];
   onChange: (next: Partial<UseNowFormState>) => void;
   onClose: () => void;
   onSubmit: () => void;
 };
 
-export function UseNowDialog({ form, account, currentUser, groups, onChange, onClose, onSubmit }: UseNowDialogProps) {
+export function UseNowDialog({ form, account, users, groups, onChange, onClose, onSubmit }: UseNowDialogProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     onSubmit();
@@ -42,7 +42,13 @@ export function UseNowDialog({ form, account, currentUser, groups, onChange, onC
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="使用人">
-            <Input readOnly value={currentUser.name} />
+            <Select onChange={(event) => onChange({ userId: event.target.value })} value={form.userId}>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="小组">
             <Select onChange={(event) => onChange({ groupId: event.target.value })} value={form.groupId}>

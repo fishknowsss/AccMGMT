@@ -12,7 +12,7 @@ export type MockSnapshot = {
   users: User[];
   groups: Group[];
   bookings: Booking[];
-  currentUser: User;
+  defaultUser: User;
 };
 
 export function createMockSnapshot(now = new Date()): MockSnapshot {
@@ -24,20 +24,20 @@ export function createMockSnapshot(now = new Date()): MockSnapshot {
   ];
 
   const users: User[] = [
-    { id: 'user-wang', name: '小王', email: 'wang@studio.local', groupId: 'group-a', role: 'member' },
-    { id: 'user-lin', name: '小林', email: 'lin@studio.local', groupId: 'group-b', role: 'admin' },
-    { id: 'user-chen', name: '陈也', email: 'chen@studio.local', groupId: 'group-c', role: 'member' },
-    { id: 'user-zhou', name: '周宁', email: 'zhou@studio.local', groupId: 'group-design', role: 'member' },
+    { id: 'user-wang', name: '小王', email: 'wang@studio.local', groupId: 'group-a' },
+    { id: 'user-lin', name: '小林', email: 'lin@studio.local', groupId: 'group-b' },
+    { id: 'user-chen', name: '陈也', email: 'chen@studio.local', groupId: 'group-c' },
+    { id: 'user-zhou', name: '周宁', email: 'zhou@studio.local', groupId: 'group-design' },
   ];
 
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
 
-  const accounts: Account[] = Array.from({ length: 12 }, (_, index) => {
+  const accounts: Account[] = runwayAccountEmails.map((email, index) => {
     const number = index + 1;
     return {
       id: `account-${number}`,
-      email: `runway-${String(number).padStart(2, '0')}@studio.local`,
+      email,
       label: `R-${String(number).padStart(2, '0')}`,
       renewalDate: dateOnly(addDays(today, renewalOffsets[index] ?? 40)),
       isActive: true,
@@ -119,9 +119,36 @@ export function createMockSnapshot(now = new Date()): MockSnapshot {
     users,
     groups,
     bookings,
-    currentUser: users[0],
+    defaultUser: users[0],
   };
 }
+
+export const runwayAccountEmails = [
+  'RaeLopez75097@outlook.com',
+  'GabrielleShell101444@outlook.com',
+  'JoanneMerino63875@outlook.com',
+  'GraceCain80741@outlook.com',
+  'KfocahZmlscy479999@outlook.com',
+  'GlendaMattice85518@outlook.com',
+  'AnnaWalzer8658@outlook.com',
+  'TcbmwXhat6440@outlook.com',
+  'PknhQebpiv097920@outlook.com',
+  'KennethHernandez74421@outlook.com',
+  'JosephDillon7994@outlook.com',
+  'LjrhDkubg843141@outlook.com',
+  'NicoleHale0973@outlook.com',
+  'DorothyNicolaou372942@outlook.com',
+  'MznofEdayye28106@outlook.com',
+  'LesterJohnson3767@outlook.com',
+  'UqltxxWtzxy8813@outlook.com',
+  'EmilyPaez1015@outlook.com',
+  'XpmfdlAjrbp706588@outlook.com',
+  'XycixrQhcvk991241@outlook.com',
+  'RichardCarter205621@outlook.com',
+  'FwlwbTankv91206@outlook.com',
+  'JamesHowell244774@outlook.com',
+  'LeonaCox646320@outlook.com',
+] as const;
 
 const renewalOffsets = [-2, 3, 6, 12, 18, 27, 35, 42, 50, 58, 65, 73];
 

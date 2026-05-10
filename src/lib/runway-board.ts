@@ -7,19 +7,18 @@ export type Account = {
   sortOrder: number;
 };
 
-export type UserRole = 'admin' | 'member';
-
 export type User = {
   id: string;
   name: string;
   email: string;
   groupId: string;
-  role: UserRole;
+  isActive?: boolean;
 };
 
 export type Group = {
   id: string;
   name: string;
+  isActive?: boolean;
 };
 
 export type BookingStatus = 'confirmed' | 'cancelled';
@@ -74,7 +73,6 @@ export type AccountsViewInput = {
   bookings: Booking[];
   users: User[];
   groups: Group[];
-  currentUser: User;
   now: Date;
   filters: AccountFiltersState;
 };
@@ -104,6 +102,18 @@ type Slot = {
 };
 
 type ValidationResult<T> = { ok: true; value: T } | { ok: false; reason: string; conflict?: Booking };
+
+export type UserDraft = {
+  name: string;
+  email: string;
+  groupId: string;
+  isActive?: boolean;
+};
+
+export type GroupDraft = {
+  name: string;
+  isActive?: boolean;
+};
 
 export const emptyFilters: AccountFiltersState = {
   query: '',
@@ -192,6 +202,81 @@ export function validateBookingDraft(draft: BookingDraft, context: BookingValida
   return { ok: true, value };
 }
 
+export function validateGroupDraft(draft: GroupDraft, groups: Group[], editingGroupId?: string): ValidationResult<Required<GroupDraft>> {
+  const value = {
+    name: draft.name.trim(),
+    isActive: draft.isActive ?? true,
+  };
+
+  if (!value.name) {
+    return { ok: false, reason: '请填写小组名称' };
+  }
+
+  const duplicate = groups.some((group) => group.id !== editingGroupId && group.name.trim().toLowerCase() === value.name.toLowerCase());
+  if (duplicate) {
+    return { ok: false, reason: '这个小组已经存在' };
+  }
+
+  return { ok: true, value };
+}
+
+export function validateUserDraft(draft: UserDraft, users: User[], groups: Group[], editingUserId?: string): ValidationResult<Required<UserDraft>> {
+  const value = {
+    name: draft.name.trim(),
+    email: draft.email.trim(),
+    groupId: draft.groupId.trim(),
+    isActive: draft.isActive ?? true,
+  };
+
+  if (!value.name) {
+    return { ok: false, reason: '请填写成员姓名' };
+  }
+
+  if (!value.email) {
+    return { ok: false, reason: '请填写成员邮箱' };
+  }
+
+  if (!groups.some((group) => group.id === value.groupId)) {
+    return { ok: false, reason: '请选择小组' };
+  }
+
+  const duplicate = users.some((user) => user.id !== editingUserId && user.email.trim().toLowerCase() === value.email.toLowerCase());
+  if (duplicate) {
+    return { ok: false, reason: '这个邮箱已经存在' };
+  }
+
+  return { ok: true, value };
+}
+
+export function getActiveUsers(users: User[]): User[] {
+  return users.filter((user) => user.isActive !== false);
+}
+
+export function getActiveGroups(groups: Group[], users: User[]): Group[] {
+  const activeGroupIds = new Set(getActiveUsers(users).map((user) => user.groupId));
+  return groups.filter((group) => group.isActive !== false || activeGroupIds.has(group.id));
+}
+
+export function validateUserDeletion(userId: string, bookings: Booking[]): ValidationResult<string> {
+  if (bookings.some((booking) => booking.userId === userId)) {
+    return { ok: false, reason: '这个成员已有预约，不能删除' };
+  }
+
+  return { ok: true, value: userId };
+}
+
+export function validateGroupDeletion(groupId: string, users: User[], bookings: Booking[]): ValidationResult<string> {
+  if (users.some((user) => user.groupId === groupId)) {
+    return { ok: false, reason: '这个小组还有成员，不能删除' };
+  }
+
+  if (bookings.some((booking) => booking.groupId === groupId)) {
+    return { ok: false, reason: '这个小组已有预约，不能删除' };
+  }
+
+  return { ok: true, value: groupId };
+}
+
 export function buildAccountsView(input: AccountsViewInput): AccountsView {
   const activeAccounts = input.accounts.filter((account) => account.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
   const rows = activeAccounts.map((account) => buildAccountRow(account, input));
@@ -236,12 +321,12 @@ export function describeConflict(conflict: Booking, users: User[], groups: Group
   return `与已有预约冲突：${formatBookingRange(conflict.startTime, conflict.endTime)} / ${user} / ${group} / ${conflict.projectName}`;
 }
 
-export function canUserReleaseBooking(booking: Booking | null, currentUser: User): boolean {
+export function canReleaseBooking(booking: Booking | null): boolean {
   if (!booking) {
     return false;
   }
 
-  return currentUser.role === 'admin' || booking.userId === currentUser.id;
+  return true;
 }
 
 export function formatBookingRange(startTime: string, endTime: string, now = new Date()): string {
@@ -285,7 +370,8 @@ export function toLocalInputValue(date: Date): string {
 }
 
 export function fromLocalInputValue(value: string): string {
-  return new Date(value).toISOString();
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : '';
 }
 
 export function roundToNextFiveMinutes(date: Date): Date {
@@ -309,7 +395,7 @@ function buildAccountRow(account: Account, input: AccountsViewInput): AccountRow
     current: runtime.current ? decorateBooking(runtime.current, input.users, input.groups) : null,
     next: runtime.next ? decorateBooking(runtime.next, input.users, input.groups) : null,
     renewalState: getRenewalState(account.renewalDate, input.now),
-    canRelease: canUserReleaseBooking(runtime.current, input.currentUser),
+    canRelease: canReleaseBooking(runtime.current),
   };
 }
 

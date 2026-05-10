@@ -1,4 +1,4 @@
-import { type Account, type Booking, type Group, type User, type UserRole } from './runway-board';
+import { type Account, type Booking, type Group, type User } from './runway-board';
 
 export type CloudAccount = {
   id: string;
@@ -27,7 +27,7 @@ export type CloudSnapshot = {
   bookings: CloudBooking[];
   users: User[];
   groups: Group[];
-  currentUser: User;
+  defaultUser: User;
 };
 
 export type BoardSnapshot = {
@@ -35,7 +35,7 @@ export type BoardSnapshot = {
   bookings: Booking[];
   users: User[];
   groups: Group[];
-  currentUser: User;
+  defaultUser: User;
 };
 
 export type AccountWritePayload = {
@@ -85,7 +85,7 @@ export function mapCloudSnapshot(snapshot: CloudSnapshot): BoardSnapshot {
     })),
     users,
     groups,
-    currentUser: snapshot.currentUser,
+    defaultUser: snapshot.defaultUser,
   };
 }
 
@@ -101,7 +101,7 @@ export async function getCloudSnapshot(baseSnapshot: BoardSnapshot): Promise<Boa
     bookings: data.bookings,
     users: baseSnapshot.users,
     groups: baseSnapshot.groups,
-    currentUser: baseSnapshot.currentUser,
+    defaultUser: baseSnapshot.defaultUser,
   });
 }
 
@@ -196,7 +196,6 @@ function ensureUser(users: User[], groups: Group[], name: string, groupName: str
     name,
     email: `${slugId(name)}@studio.local`,
     groupId: group.id,
-    role: 'member' as UserRole,
   };
   users.push(user);
   return user;
