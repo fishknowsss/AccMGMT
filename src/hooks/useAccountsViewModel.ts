@@ -310,8 +310,7 @@ export function useAccountsViewModel() {
     };
 
     try {
-      const pin = getOperatorPin();
-      const cloudAccount = await updateCloudAccount(accountId, payload, pin);
+      const cloudAccount = await updateCloudAccount(accountId, payload);
       setAccounts((current) =>
         current.map((item) =>
           item.id === accountId
@@ -358,7 +357,6 @@ export function useAccountsViewModel() {
           isActive: draft.isActive,
           sortOrder,
         },
-        getOperatorPin(),
       );
       setAccounts((current) => [
         ...current,
@@ -540,19 +538,6 @@ function bookingDraftToCloudPayload(draft: BookingDraft, users: User[], groups: 
     startAt: draft.startTime,
     endAt: draft.endTime,
   };
-}
-
-function getOperatorPin(): string {
-  const stored = window.sessionStorage.getItem('accmgmt.operatorPin');
-  if (stored) {
-    return stored;
-  }
-
-  const pin = window.prompt('请输入操作口令')?.trim() ?? '';
-  if (pin) {
-    window.sessionStorage.setItem('accmgmt.operatorPin', pin);
-  }
-  return pin;
 }
 
 function todayDateInputValue(): string {

@@ -1,14 +1,8 @@
-import { verifyOperatorPin } from '../../../lib/auth';
 import { json, readJson } from '../../_lib/http';
 import { createRepository } from '../../_lib/repository';
 import type { Env } from '../../_lib/env';
 
 export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params }) => {
-  const pin = verifyOperatorPin(request, env.OPERATOR_PIN);
-  if (!pin.ok) {
-    return json({ message: pin.reason }, { status: pin.status });
-  }
-
   const body = await readJson(request);
   const input = normalizeAccountInput(body);
   if (!input.ok) {

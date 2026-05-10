@@ -105,19 +105,19 @@ export async function getCloudSnapshot(baseSnapshot: BoardSnapshot): Promise<Boa
   });
 }
 
-export async function createCloudAccount(payload: AccountWritePayload, pin: string): Promise<CloudAccount> {
+export async function createCloudAccount(payload: AccountWritePayload): Promise<CloudAccount> {
   const response = await fetch('/api/accounts', {
     method: 'POST',
-    headers: writeHeaders(pin),
+    headers: writeHeaders(),
     body: JSON.stringify(payload),
   });
   return readCloudEntity(response, 'account');
 }
 
-export async function updateCloudAccount(accountId: string, payload: AccountWritePayload, pin: string): Promise<CloudAccount> {
+export async function updateCloudAccount(accountId: string, payload: AccountWritePayload): Promise<CloudAccount> {
   const response = await fetch(`/api/accounts/${accountId}`, {
     method: 'PATCH',
-    headers: writeHeaders(pin),
+    headers: writeHeaders(),
     body: JSON.stringify(payload),
   });
   return readCloudEntity(response, 'account');
@@ -139,10 +139,9 @@ export async function releaseCloudBooking(bookingId: string): Promise<CloudBooki
   return readCloudEntity(response, 'booking');
 }
 
-function writeHeaders(pin: string): HeadersInit {
+function writeHeaders(): HeadersInit {
   return {
     'content-type': 'application/json',
-    'x-operator-pin': pin,
   };
 }
 

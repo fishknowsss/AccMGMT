@@ -97,7 +97,7 @@ describe('mapCloudSnapshot', () => {
 });
 
 describe('cloud write headers', () => {
-  it('keeps the operator pin on account edits', async () => {
+  it('does not send an operator pin on account edits', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -115,25 +115,24 @@ describe('cloud write headers', () => {
       ),
     );
 
-    await createCloudAccount(
-      {
-        email: 'runway01@example.com',
-        label: 'R-01',
-        renewalDate: '2026-05-20',
-        isActive: true,
-        sortOrder: 1,
-      },
-      '123456',
-    );
+    await createCloudAccount({
+      email: 'runway01@example.com',
+      label: 'R-01',
+      renewalDate: '2026-05-20',
+      isActive: true,
+      sortOrder: 1,
+    });
 
     expect(fetch).toHaveBeenCalledWith(
       '/api/accounts',
       expect.objectContaining({
         headers: expect.objectContaining({
-          'x-operator-pin': '123456',
+          'content-type': 'application/json',
         }),
       }),
     );
+    const headers = (vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit | undefined)?.headers as Record<string, string> | undefined;
+    expect(headers?.['x-operator-pin']).toBeUndefined();
   });
 
   it('does not send the operator pin for daily booking operations', async () => {

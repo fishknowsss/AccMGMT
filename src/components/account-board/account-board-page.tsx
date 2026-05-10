@@ -1,6 +1,6 @@
 import { LayoutDashboard, Settings, Trash2, UsersRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useAccountsViewModel } from '../../hooks/useAccountsViewModel';
+import { useAccountsViewModel, type AccountDraftState } from '../../hooks/useAccountsViewModel';
 import { boardSections, getBoardSectionMeta, type BoardSection } from '../../lib/board-navigation';
 import { advanceDeveloperSequence, canUseDeveloperShortcut, normalizeDeveloperKey } from '../../lib/developer-mode';
 import { type Account, type Group, type User } from '../../lib/runway-board';
@@ -235,12 +235,11 @@ function AccountEditorSection({ model }: { model: BoardModel }) {
         <span className="font-mono text-sm tabular-nums text-[#667085]">{model.accounts.length} 个账号</span>
       </div>
       <AccountCreator getDefaultDraft={model.getEmptyAccountDraft} onCreate={model.createAccount} />
-      <div className="hidden grid-cols-[110px_minmax(260px,1fr)_160px_120px_80px] border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-3 text-sm font-medium text-[#667085] xl:grid">
+      <div className="hidden grid-cols-[110px_minmax(260px,1fr)_160px_120px] border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-3 text-sm font-medium text-[#667085] xl:grid">
         <div>编号</div>
         <div>账号邮箱</div>
         <div>续费日期</div>
         <div>状态</div>
-        <div className="text-right">操作</div>
       </div>
       <div className="grid divide-y divide-[#EEF2F6]">
         {model.accounts.map((account) => (
@@ -325,7 +324,7 @@ function AccountCreator({ getDefaultDraft, onCreate }: { getDefaultDraft: BoardM
           取消
         </Button>
         <Button onClick={handleCreate} type="button" variant="primary">
-          保存
+          新增
         </Button>
       </div>
     </section>
@@ -359,24 +358,33 @@ function AccountEditor({ account, onSave }: { account: Account; onSave: BoardMod
   }, [account]);
 
   return (
-    <article className="grid gap-3 px-5 py-4 xl:grid-cols-[110px_minmax(260px,1fr)_160px_120px_80px] xl:items-center">
-      <Input value={draft.label} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
-      <Input value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
-      <Input type="date" value={draft.renewalDate} onChange={(event) => setDraft({ ...draft, renewalDate: event.target.value })} />
+    <article className="grid gap-3 px-5 py-4 xl:grid-cols-[110px_minmax(260px,1fr)_160px_120px] xl:items-center">
+      <Input value={draft.label} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
+      <Input value={draft.email} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
+      <Input type="date" value={draft.renewalDate} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, renewalDate: event.target.value })} />
       <label className="flex items-center gap-2 text-sm font-medium text-[#344154]">
         <input
           checked={draft.isActive}
           className="h-4 w-4 accent-[#1C2430]"
-          onChange={(event) => setDraft({ ...draft, isActive: event.target.checked })}
+          onChange={(event) => {
+            const next = { ...draft, isActive: event.target.checked };
+            setDraft(next);
+            void onSave(account.id, next);
+          }}
           type="checkbox"
         />
         启用账号
       </label>
-      <Button className="xl:justify-self-end" onClick={() => onSave(account.id, draft)} size="sm" type="button" variant="secondary">
-        保存
-      </Button>
     </article>
   );
+}
+
+function saveAccountDraft(account: Account, draft: AccountDraftState, onSave: BoardModel['updateAccount']) {
+  if (account.label === draft.label && account.email === draft.email && account.renewalDate === draft.renewalDate && account.isActive === draft.isActive) {
+    return;
+  }
+
+  void onSave(account.id, draft);
 }
 
 function MemberGroupsPanel({ developerMode, model }: { developerMode: boolean; model: BoardModel }) {
@@ -495,19 +503,26 @@ function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: Boar
   }
 
   return (
-    <article className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_110px_80px_40px] sm:items-center">
-      <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+    <article className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_110px_40px] sm:items-center">
+      <Input value={draft.name} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
       <label className="flex items-center gap-2 text-sm font-medium text-[#344154]">
-        <input checked={draft.isActive} className="h-4 w-4 accent-[#1C2430]" onChange={(event) => setDraft({ ...draft, isActive: event.target.checked })} type="checkbox" />
+        <input
+          checked={draft.isActive}
+          className="h-4 w-4 accent-[#1C2430]"
+          onChange={(event) => {
+            const next = { ...draft, isActive: event.target.checked };
+            setDraft(next);
+            const result = onSave(group.id, next);
+            setError(result.ok ? '' : result.reason);
+          }}
+          type="checkbox"
+        />
         启用
       </label>
-      <Button className="sm:justify-self-end" onClick={handleSave} size="sm" type="button" variant="secondary">
-        保存
-      </Button>
       <Button aria-label="删除小组" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={handleDelete} size="icon" type="button" variant="ghost">
         <Trash2 size={16} />
       </Button>
-      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] sm:col-span-4">{error}</div> : null}
+      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] sm:col-span-3">{error}</div> : null}
     </article>
   );
 }
@@ -583,21 +598,37 @@ function MemberEditor({ groups, onDelete, onSave, user }: { groups: Group[]; onD
   }
 
   return (
-    <article className="grid gap-3 px-5 py-4 xl:grid-cols-[120px_minmax(220px,1fr)_150px_100px_80px_40px] xl:items-center">
-      <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-      <Input value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
-      <GroupSelect groups={groups} value={draft.groupId} onChange={(groupId) => setDraft({ ...draft, groupId })} />
+    <article className="grid gap-3 px-5 py-4 xl:grid-cols-[120px_minmax(220px,1fr)_150px_100px_40px] xl:items-center">
+      <Input value={draft.name} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+      <Input value={draft.email} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
+      <GroupSelect
+        groups={groups}
+        value={draft.groupId}
+        onChange={(groupId) => {
+          const next = { ...draft, groupId };
+          setDraft(next);
+          const result = onSave(user.id, next);
+          setError(result.ok ? '' : result.reason);
+        }}
+      />
       <label className="flex items-center gap-2 text-sm font-medium text-[#344154]">
-        <input checked={draft.isActive} className="h-4 w-4 accent-[#1C2430]" onChange={(event) => setDraft({ ...draft, isActive: event.target.checked })} type="checkbox" />
+        <input
+          checked={draft.isActive}
+          className="h-4 w-4 accent-[#1C2430]"
+          onChange={(event) => {
+            const next = { ...draft, isActive: event.target.checked };
+            setDraft(next);
+            const result = onSave(user.id, next);
+            setError(result.ok ? '' : result.reason);
+          }}
+          type="checkbox"
+        />
         启用
       </label>
-      <Button className="xl:justify-self-end" onClick={handleSave} size="sm" type="button" variant="secondary">
-        保存
-      </Button>
       <Button aria-label="删除成员" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={handleDelete} size="icon" type="button" variant="ghost">
         <Trash2 size={16} />
       </Button>
-      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] xl:col-span-6">{error}</div> : null}
+      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] xl:col-span-5">{error}</div> : null}
     </article>
   );
 }

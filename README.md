@@ -11,7 +11,6 @@
 - 到结束时间后自动显示为空闲
 - 提前释放当前占用
 - 维护账号邮箱和续费日期
-- 账号信息编辑需要内部操作口令
 
 ## 本地运行
 
@@ -25,12 +24,6 @@ npm install
 
 ```bash
 npm run local
-```
-
-第一次运行时会自动创建 `.dev.vars`，默认本地账号编辑口令是：
-
-```txt
-123456
 ```
 
 预览地址会自动打开：
@@ -56,25 +49,23 @@ npx wrangler pages dev dist --d1 DB=accmgmt --compatibility-date=2026-05-09
 - 数据库：Cloudflare D1 `accmgmt`
 - D1 database id：`f9430df1-a23e-4ba8-9f8b-55cb97d2b9ae`
 - 线上数据表：`accounts`、`bookings`
-- 账号信息编辑口令通过 Pages 环境变量 `OPERATOR_PIN` 配置
 
 1. 登录 Cloudflare。
 2. 创建 D1 数据库，名称用 `accmgmt`。
 3. 把数据库 ID 填到 `wrangler.toml` 的 `database_id`。
-4. 在 Cloudflare Pages 项目里添加环境变量 `OPERATOR_PIN`。
-5. 应用远程迁移：
+4. 应用远程迁移：
 
 ```bash
 npm run cf:migrate
 ```
 
-6. 部署：
+5. 部署：
 
 ```bash
 npm run cf:deploy
 ```
 
-7. 在 Pages 项目的 Custom domains 里绑定你的域名。
+6. 在 Pages 项目的 Custom domains 里绑定你的域名。
 
 ### 绑定子域名
 
