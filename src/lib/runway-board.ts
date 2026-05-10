@@ -273,7 +273,7 @@ export function validateUserDeletion(userId: string, _bookings: Booking[]): Vali
 
 export function validateGroupDeletion(groupId: string, _users: User[], bookings: Booking[]): ValidationResult<string> {
   if (bookings.some((booking) => booking.groupId === groupId)) {
-    return { ok: false, reason: '这个小组已有预约，不能删除' };
+    return { ok: false, reason: '这个小组当前有账号使用中，暂时无法删除' };
   }
 
   return { ok: true, value: groupId };

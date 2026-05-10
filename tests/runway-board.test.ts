@@ -328,9 +328,10 @@ describe('member and group editing rules', () => {
     expect(validateUserDeletion('user-1', [booking({})])).toEqual({ ok: true, value: 'user-1' });
   });
 
-  it('allows deleting groups with members but blocks groups referenced by bookings', () => {
+  it('allows deleting groups freely unless a booking is currently active for that group', () => {
     expect(validateGroupDeletion('group-empty', users, [])).toEqual({ ok: true, value: 'group-empty' });
     expect(validateGroupDeletion('group-a', users, [])).toEqual({ ok: true, value: 'group-a' });
-    expect(validateGroupDeletion('group-c', [], [booking({ groupId: 'group-c' })])).toEqual({ ok: false, reason: '这个小组已有预约，不能删除' });
+    // default booking fixture spans 09:00–11:00, now=10:00 → currently active → should block
+    expect(validateGroupDeletion('group-c', [], [booking({ groupId: 'group-c' })])).toEqual({ ok: false, reason: '这个小组当前有账号使用中，暂时无法删除' });
   });
 });
