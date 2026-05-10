@@ -63,7 +63,7 @@ export function AccountFilters({ filters, groups, onChange, onFindAvailable }: A
           <option value="7d">7天内</option>
           <option value="30d">30天内</option>
         </Select>
-        <Button className="w-full justify-center rounded-lg px-4 xl:w-auto" onClick={onFindAvailable} type="button" variant="primary">
+        <Button className="shrink-0 justify-center rounded-lg px-4 xl:w-auto" onClick={onFindAvailable} type="button" variant="primary">
           <Wand2 size={15} />
           找可用
         </Button>

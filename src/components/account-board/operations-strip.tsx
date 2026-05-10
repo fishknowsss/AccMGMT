@@ -11,7 +11,39 @@ export function OperationsStrip({ stats }: OperationsStripProps) {
   const idlePercent = 100 - occupancy;
 
   return (
-    <section className="shrink-0 overflow-hidden rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] shadow-[0_10px_26px_rgba(52,64,84,0.05)]" aria-label="账号概览">
+    <>
+      {/* Mobile: compact single-row strip */}
+      <section
+        className="lg:hidden shrink-0 flex items-center gap-3 rounded-xl border border-[#DDE3EA] bg-[#FCFDFE] px-3 py-2.5"
+        aria-label="账号概览"
+      >
+        <span className="font-mono text-sm font-semibold tabular-nums text-[#171A1F] shrink-0">{occupancy}%</span>
+        <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-[#E8EDF3]">
+          <div className="flex h-full">
+            <span className="h-full bg-[#86A9D6]" style={{ width: `${occupancy}%` }} />
+            <span className="h-full bg-[#A7CBB5]" style={{ width: `${idlePercent}%` }} />
+          </div>
+        </div>
+        <div className="flex items-center gap-2.5 shrink-0 text-xs text-[#4F5968]">
+          <span className="inline-flex items-center gap-1">
+            <i className="h-1.5 w-1.5 rounded-full bg-[#86A9D6]" />
+            使用中 {stats.inUse}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <i className="h-1.5 w-1.5 rounded-full bg-[#A7CBB5]" />
+            空闲 {stats.idle}
+          </span>
+          {stats.todayBookings > 0 && (
+            <span className="rounded-md bg-[#EEF2F6] px-1.5 py-0.5">{stats.todayBookings} 预约</span>
+          )}
+          {stats.renewalSoon > 0 && (
+            <span className="rounded-md bg-[#FDF5E6] px-1.5 py-0.5 text-[#92400E]">{stats.renewalSoon} 续费</span>
+          )}
+        </div>
+      </section>
+
+      {/* Desktop: full card */}
+      <section className="hidden lg:block shrink-0 overflow-hidden rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] shadow-[0_10px_26px_rgba(52,64,84,0.05)]" aria-label="账号概览">
       <div className="grid gap-0 lg:grid-cols-[minmax(360px,1fr)_minmax(520px,1.2fr)]">
         <div className="border-b border-[#E6EAF0] px-4 py-3 lg:border-b-0 lg:border-r">
           <div className="mb-3 flex items-center justify-between gap-4">
@@ -48,7 +80,8 @@ export function OperationsStrip({ stats }: OperationsStripProps) {
           <Metric icon={RefreshCcw} label="7天内续费" value={stats.renewalSoon} />
         </div>
       </div>
-    </section>
+      </section>
+    </>
   );
 }
 

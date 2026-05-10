@@ -77,19 +77,32 @@ export function AccountBoardPage() {
         </aside>
 
           <main className={cn('flex min-w-0 flex-1 flex-col gap-4', (activeSection === 'accounts' || activeSection === 'projects') ? 'lg:min-h-0 lg:overflow-y-auto lg:overflow-x-hidden' : 'lg:min-h-0 lg:overflow-hidden')}>
-          <header className="shrink-0 rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] px-5 py-4 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div>
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="rounded-md bg-[#E8EDF3] px-2 py-1 text-sm font-medium text-[#344154]">{activeMeta.shortLabel}</span>
-                  <span className="font-mono text-sm tabular-nums text-[#667085]">Runway Unlimited / $95</span>
-                  {developerMode ? <span className="rounded-md bg-[#1C2430] px-2 py-1 text-sm font-medium text-white">编辑模式</span> : null}
-                </div>
-                <h1 className="text-[28px] font-semibold leading-tight tracking-normal text-[#15171B]">{activeMeta.label}</h1>
+          <header className="shrink-0 rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
+            {/* Mobile: compact single row */}
+            <div className="flex items-center justify-between px-4 py-3 lg:hidden">
+              <div className="flex items-center gap-2">
+                <h1 className="text-[17px] font-semibold leading-tight text-[#15171B]">{activeMeta.label}</h1>
+                {developerMode ? <span className="rounded-md bg-[#1C2430] px-1.5 py-0.5 text-xs font-medium text-white">编辑模式</span> : null}
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="rounded-lg bg-[#F2F5F8] px-3 py-2 font-mono text-sm tabular-nums text-[#344154]">
-                  <time dateTime={model.now.toISOString()}>{formatDateTime(model.now)}</time>
+              <div className="rounded-lg bg-[#F2F5F8] px-2.5 py-1.5 font-mono text-xs tabular-nums text-[#344154]">
+                <time dateTime={model.now.toISOString()}>{formatDateTime(model.now)}</time>
+              </div>
+            </div>
+            {/* Desktop: full layout */}
+            <div className="hidden px-5 py-4 lg:block">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="rounded-md bg-[#E8EDF3] px-2 py-1 text-sm font-medium text-[#344154]">{activeMeta.shortLabel}</span>
+                    <span className="font-mono text-sm tabular-nums text-[#667085]">Runway Unlimited / $95</span>
+                    {developerMode ? <span className="rounded-md bg-[#1C2430] px-2 py-1 text-sm font-medium text-white">编辑模式</span> : null}
+                  </div>
+                  <h1 className="text-[28px] font-semibold leading-tight tracking-normal text-[#15171B]">{activeMeta.label}</h1>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="rounded-lg bg-[#F2F5F8] px-3 py-2 font-mono text-sm tabular-nums text-[#344154]">
+                    <time dateTime={model.now.toISOString()}>{formatDateTime(model.now)}</time>
+                  </div>
                 </div>
               </div>
             </div>
