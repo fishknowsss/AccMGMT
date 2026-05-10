@@ -323,9 +323,9 @@ describe('member and group editing rules', () => {
     expect(getActiveGroups(editableGroups, editableUsers).map((group) => group.id)).toEqual(['group-a']);
   });
 
-  it('allows deleting only members that are not referenced by bookings', () => {
+  it('always allows deleting members regardless of bookings', () => {
     expect(validateUserDeletion('user-2', [])).toEqual({ ok: true, value: 'user-2' });
-    expect(validateUserDeletion('user-1', [booking({})])).toEqual({ ok: false, reason: '这个成员已有预约，不能删除' });
+    expect(validateUserDeletion('user-1', [booking({})])).toEqual({ ok: true, value: 'user-1' });
   });
 
   it('allows deleting groups with members but blocks groups referenced by bookings', () => {

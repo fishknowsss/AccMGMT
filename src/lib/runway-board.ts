@@ -267,11 +267,7 @@ export function getActiveGroups(groups: Group[], users: User[]): Group[] {
   return groups.filter((group) => group.isActive !== false || activeGroupIds.has(group.id));
 }
 
-export function validateUserDeletion(userId: string, bookings: Booking[]): ValidationResult<string> {
-  if (bookings.some((booking) => booking.userId === userId)) {
-    return { ok: false, reason: '这个成员已有预约，不能删除' };
-  }
-
+export function validateUserDeletion(userId: string, _bookings: Booking[]): ValidationResult<string> {
   return { ok: true, value: userId };
 }
 
