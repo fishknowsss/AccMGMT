@@ -1,4 +1,5 @@
-import { type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { addHours, toLocalInputValue } from '../../lib/runway-board';
 import { type Account, type Group, type User } from '../../lib/runway-board';
 import { type BookingFormState } from '../../hooks/useAccountsViewModel';
@@ -9,7 +10,7 @@ import { DurationStepper } from '../ui/duration-stepper';
 
 function computeDuration(startTime: string, endTime: string): number {
   const diff = (new Date(endTime).getTime() - new Date(startTime).getTime()) / 3_600_000;
-  return Math.max(0.5, Math.min(24, Math.round(diff * 2) / 2));
+  return Math.max(0.5, Math.min(8, Math.round(diff * 2) / 2));
 }
 
 type BookingDialogProps = {
@@ -17,13 +18,15 @@ type BookingDialogProps = {
   account: Account | undefined;
   users: User[];
   groups: Group[];
+  projects: string[];
   onChange: (next: Partial<BookingFormState>) => void;
   onClose: () => void;
   onSubmit: () => void;
 };
 
-export function BookingDialog({ form, account, users, groups, onChange, onClose, onSubmit }: BookingDialogProps) {
+export function BookingDialog({ form, account, users, groups, projects, onChange, onClose, onSubmit }: BookingDialogProps) {
   const durationHours = computeDuration(form.startTime, form.endTime);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   function handleStartTimeChange(startTime: string) {
     const newEnd = toLocalInputValue(addHours(new Date(startTime), durationHours));
@@ -80,7 +83,36 @@ export function BookingDialog({ form, account, users, groups, onChange, onClose,
           </Field>
         </div>
         <Field label="项目">
-          <Input autoFocus onChange={(event) => onChange({ projectName: event.target.value })} value={form.projectName} />
+          <div className="relative">
+            <div className="flex gap-1">
+              <Input autoFocus className="flex-1" onChange={(event) => { onChange({ projectName: event.target.value }); setPickerOpen(false); }} value={form.projectName} />
+              {projects.length > 0 ? (
+                <button
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#DDE3EA] bg-white text-[#667085] transition hover:bg-[#F5F7FA]"
+                  onClick={() => setPickerOpen((v) => !v)}
+                  title="从已有项目中选择"
+                  type="button"
+                >
+                  <ChevronDown size={14} className={pickerOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                </button>
+              ) : null}
+            </div>
+            {pickerOpen ? (
+              <ul className="absolute left-0 right-0 top-full z-20 mt-1 max-h-40 overflow-y-auto rounded-lg border border-[#DDE3EA] bg-white py-1 shadow-lg">
+                {projects.map((p) => (
+                  <li key={p}>
+                    <button
+                      className="w-full px-3 py-2 text-left text-sm text-[#202329] hover:bg-[#F5F7FA]"
+                      onClick={() => { onChange({ projectName: p }); setPickerOpen(false); }}
+                      type="button"
+                    >
+                      {p}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="开始时间">

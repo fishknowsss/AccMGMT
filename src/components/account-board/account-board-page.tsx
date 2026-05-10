@@ -1,4 +1,4 @@
-import { LayoutDashboard, Settings, Trash2, UsersRound } from 'lucide-react';
+import { LayoutDashboard, Settings, Trash2, UsersRound, FolderOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAccountsViewModel, type AccountDraftState } from '../../hooks/useAccountsViewModel';
 import { boardSections, getBoardSectionMeta, type BoardSection } from '../../lib/board-navigation';
@@ -61,15 +61,36 @@ export function AccountBoardPage() {
   return (
     <div className="h-screen overflow-hidden bg-[#F6F7F9] text-[#202329]">
       <div className="relative mx-auto flex h-full w-full max-w-[1440px] gap-4 px-4 py-4 lg:px-6">
-        <aside className="hidden w-[76px] shrink-0 lg:block">
-          <div className="sticky top-4 flex h-[calc(100vh-2rem)] flex-col items-center rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] p-3 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#1C2430] text-sm font-semibold text-white">AM</div>
-            <nav className="mt-6 grid gap-2" aria-label="主导航">
+        <aside className="hidden w-[192px] shrink-0 lg:block">
+          <div className="sticky top-4 flex h-[calc(100vh-2rem)] flex-col rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] px-3 py-3 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
+            <div className="mb-4 grid h-11 w-11 place-items-center rounded-xl bg-[#1C2430] text-sm font-semibold text-white">AM</div>
+            <nav className="grid gap-1" aria-label="主导航">
               {primarySections.map((item) => (
                 <RailButton active={item.id === activeSection} key={item.id} section={item.id} onClick={setActiveSection} />
               ))}
             </nav>
-            <nav className="mt-auto grid gap-2" aria-label="设置导航">
+
+            <div className="mt-5 flex min-h-0 flex-1 flex-col">
+              <div className="mb-2 flex items-center gap-1.5 px-2">
+                <FolderOpen size={13} className="shrink-0 text-[#98A7B7]" />
+                <span className="text-xs font-medium text-[#98A7B7]">项目</span>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {model.projects.length ? (
+                  <ul className="grid gap-0.5">
+                    {model.projects.map((p) => (
+                      <li key={p} className="truncate rounded-lg px-2 py-1.5 text-sm text-[#344154] hover:bg-[#EEF2F6]" title={p}>
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="px-2 text-xs text-[#B0BAC9]">暂无项目记录。</p>
+                )}
+              </div>
+            </div>
+
+            <nav className="mt-2 grid gap-1" aria-label="设置导航">
               <RailButton active={settingsSection.id === activeSection} section={settingsSection.id} onClick={setActiveSection} />
             </nav>
           </div>
@@ -146,6 +167,7 @@ export function AccountBoardPage() {
           onChange={model.updateUseNowForm}
           onClose={model.closeUseNow}
           onSubmit={model.submitUseNow}
+          projects={model.projects}
           users={model.activeUsers}
         />
       ) : null}
@@ -158,6 +180,7 @@ export function AccountBoardPage() {
           onChange={model.updateBookingForm}
           onClose={model.closeBooking}
           onSubmit={model.submitBooking}
+          projects={model.projects}
           users={model.activeUsers}
         />
       ) : null}
@@ -196,13 +219,14 @@ function RailButton({ active, section, onClick }: { active: boolean; section: Bo
       aria-current={active ? 'page' : undefined}
       aria-label={meta.label}
       className={cn(
-        'grid h-11 w-11 place-items-center rounded-2xl text-[#667085] transition hover:bg-[#EEF2F6] hover:text-[#263241]',
+        'flex h-10 w-full items-center gap-3 rounded-xl px-2 text-[#667085] transition hover:bg-[#EEF2F6] hover:text-[#263241]',
         active && 'bg-[#E8EDF3] text-[#1C2430] shadow-[inset_0_0_0_1px_rgba(81,94,115,0.08)]',
       )}
       onClick={() => onClick(section)}
       type="button"
     >
-      <Icon size={18} />
+      <Icon size={16} className="shrink-0" />
+      <span className="truncate text-sm font-medium">{meta.shortLabel}</span>
     </button>
   );
 }
@@ -401,10 +425,12 @@ function saveAccountDraft(account: Account, draft: AccountDraftState, onSave: Bo
 function MemberGroupsPanel({ developerMode, model }: { developerMode: boolean; model: BoardModel }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-      <section className="grid shrink-0 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {model.groups.map((group) => (
-          <GroupSummaryCard group={group} key={group.id} model={model} />
-        ))}
+      <section className="max-h-[230px] shrink-0 overflow-y-auto">
+        <div className="grid gap-3 pb-0.5 md:grid-cols-2 xl:grid-cols-4">
+          {model.groups.map((group) => (
+            <GroupSummaryCard group={group} key={group.id} model={model} />
+          ))}
+        </div>
       </section>
 
       {developerMode ? (

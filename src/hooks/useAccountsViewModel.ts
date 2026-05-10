@@ -480,6 +480,11 @@ export function useAccountsViewModel() {
     };
   }
 
+  const projects = useMemo(
+    () => Array.from(new Set(bookings.map((b) => b.projectName).filter(Boolean))).sort(),
+    [bookings],
+  );
+
   return {
     accounts,
     users,
@@ -494,6 +499,7 @@ export function useAccountsViewModel() {
     useNowForm,
     bookingForm,
     accountById,
+    projects,
     updateFilters,
     openUseNow,
     openBooking,
