@@ -516,7 +516,7 @@ export function useAccountsViewModel() {
           isActive: cloudUser.isActive ?? true,
         })),
       ]);
-      setToast(`已导入 ${createdUsers.length} 位成员。`);
+      setToast(createdUsers.length === 1 ? '成员已新增。' : `已导入 ${createdUsers.length} 位成员。`);
       return { ok: true };
     } catch (error) {
       return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };

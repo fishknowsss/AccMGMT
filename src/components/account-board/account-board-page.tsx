@@ -658,30 +658,20 @@ function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: Boar
 function MemberEditorSection({ model }: { model: BoardModel }) {
   const defaultGroupId = model.activeGroups[0]?.id ?? model.groups[0]?.id ?? '';
   const [draft, setDraft] = useState({ name: '', groupId: defaultGroupId, isActive: true });
-  const [bulkText, setBulkText] = useState('');
   const [error, setError] = useState('');
+  const nameCount = draft.name.split(/\r?\n/).map((name) => name.trim()).filter(Boolean).length;
 
   useEffect(() => {
     setDraft((current) => (current.groupId ? current : { ...current, groupId: defaultGroupId }));
   }, [defaultGroupId]);
 
   async function handleCreate() {
-    const result = await model.createUser(draft);
+    const result = await model.createUsersFromText(draft.name, draft.groupId);
     if (!result.ok) {
       setError(result.reason);
       return;
     }
     setDraft({ name: '', groupId: defaultGroupId, isActive: true });
-    setError('');
-  }
-
-  async function handleBulkCreate() {
-    const result = await model.createUsersFromText(bulkText, draft.groupId);
-    if (!result.ok) {
-      setError(result.reason);
-      return;
-    }
-    setBulkText('');
     setError('');
   }
 
@@ -691,32 +681,22 @@ function MemberEditorSection({ model }: { model: BoardModel }) {
         <h2 className="text-base font-semibold text-[#171A1F]">成员编辑</h2>
         <span className="font-mono text-sm tabular-nums text-[#667085]">{model.activeUsers.length} 位成员</span>
       </div>
-      <div className="grid shrink-0 gap-3 border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-4">
+      <div className="grid shrink-0 gap-3 border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-3">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_80px]">
           <Field label="姓名">
-            <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-          </Field>
-          <Field label="小组">
-            <GroupSelect groups={model.activeGroups} value={draft.groupId} onChange={(groupId) => setDraft({ ...draft, groupId })} />
-          </Field>
-          <Button className="self-end" onClick={handleCreate} type="button" variant="primary">
-            新增
-          </Button>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_80px]">
-          <Field label="批量导入">
             <textarea
-              className="min-h-[88px] w-full resize-y rounded-md border border-[#DDE1E7] bg-white px-3 py-2 text-sm leading-6 text-[#24272D] outline-none transition focus:border-[#AEB7C4] focus:ring-3 focus:ring-[#2F6BFF]/10"
-              onChange={(event) => setBulkText(event.target.value)}
-              placeholder={'每行一个姓名'}
-              value={bulkText}
+              className="min-h-10 max-h-[104px] w-full resize-y rounded-md border border-[#DDE1E7] bg-white px-3 py-2 text-sm leading-5 text-[#24272D] outline-none transition focus:border-[#AEB7C4] focus:ring-3 focus:ring-[#2F6BFF]/10"
+              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+              placeholder="可粘贴多行姓名"
+              rows={1}
+              value={draft.name}
             />
           </Field>
           <Field label="小组">
             <GroupSelect groups={model.activeGroups} value={draft.groupId} onChange={(groupId) => setDraft({ ...draft, groupId })} />
           </Field>
-          <Button className="self-end" onClick={handleBulkCreate} type="button" variant="primary">
-            导入
+          <Button className="self-end" onClick={handleCreate} type="button" variant="primary">
+            {nameCount > 1 ? '导入' : '新增'}
           </Button>
         </div>
         {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{error}</div> : null}
