@@ -9,9 +9,10 @@ type DialogProps = {
   footer: ReactNode;
   onClose: () => void;
   className?: string;
+  bodyClassName?: string;
 };
 
-export function Dialog({ title, children, footer, onClose, className }: DialogProps) {
+export function Dialog({ title, children, footer, onClose, className, bodyClassName }: DialogProps) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -45,7 +46,7 @@ export function Dialog({ title, children, footer, onClose, className }: DialogPr
             <X size={17} />
           </Button>
         </header>
-        <div className="grid gap-4 overflow-y-auto px-5 py-5">{children}</div>
+        <div className={cn('grid gap-4 overflow-y-auto px-5 py-5', bodyClassName)}>{children}</div>
         <footer className="shrink-0 mt-auto flex justify-end gap-2 border-t border-[#E7EAF0] px-5 py-4">{footer}</footer>
       </section>
     </div>

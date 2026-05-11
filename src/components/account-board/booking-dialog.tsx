@@ -107,7 +107,7 @@ export function BookingDialog({ form, account, users, groups, projects, onChange
                 <button
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-r-md border border-l-0 border-[#DDE1E7] bg-white text-[#667085] transition hover:bg-[#F5F7FA]"
                   onClick={() => setPickerOpen((v) => !v)}
-                  title="从已有项目中选择"
+                  aria-label="选择项目"
                   type="button"
                 >
                   <ChevronDown size={13} className={pickerOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
