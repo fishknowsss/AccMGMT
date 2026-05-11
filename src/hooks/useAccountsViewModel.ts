@@ -9,7 +9,9 @@ import {
   getActiveGroups,
   getActiveUsers,
   getNextAccountLabel,
+  parseMemberImportNames,
   roundToNextFiveMinutes,
+  selectAvailableAccounts,
   toLocalInputValue,
   validateGroupDeletion,
   validateGroupDraft,
@@ -45,6 +47,7 @@ import {
 
 export type UseNowFormState = {
   accountId: string;
+  accountOptions: string[];
   userId: string;
   groupId: string;
   projectName: string;
@@ -295,19 +298,17 @@ export function useAccountsViewModel() {
   }
 
   function findAvailableAccount() {
-    const account = accounts
-      .filter((item) => item.isActive)
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .find((item) => getAccountRuntime(item.id, bookings, now).kind === 'idle');
+    const options = selectAvailableAccounts(accounts, bookings, now);
+    const account = options[0];
 
     if (!account) {
       setToast('当前没有可用账号。');
       return;
     }
 
-    setFilters({ ...emptyFilters, query: account.email });
-    setUseNowForm(createUseNowForm(account.id, bookings, now, defaultUser));
-    setToast(`已找到 ${account.label}。`);
+    setFilters({ ...emptyFilters, status: 'idle' });
+    setUseNowForm(createUseNowForm(account.id, bookings, now, defaultUser, options.map((item) => item.id)));
+    setToast(`已找到 ${options.length} 个可用账号。`);
   }
 
   async function copyAccountEmail(email: string) {
@@ -484,6 +485,44 @@ export function useAccountsViewModel() {
     }
   }
 
+  async function createUsersFromText(text: string, groupId: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const names = parseMemberImportNames(text, users);
+    if (!names.ok) {
+      return { ok: false, reason: names.reason };
+    }
+
+    if (!groups.some((group) => group.id === groupId)) {
+      return { ok: false, reason: '请选择小组' };
+    }
+
+    try {
+      const createdUsers = await Promise.all(
+        names.value.map((name) =>
+          createCloudUser({
+            name,
+            email: undefined,
+            groupId,
+            isActive: true,
+          }),
+        ),
+      );
+      setUsers((current) => [
+        ...current,
+        ...createdUsers.map((cloudUser) => ({
+          id: cloudUser.id,
+          name: cloudUser.name,
+          ...(cloudUser.email != null ? { email: cloudUser.email } : {}),
+          groupId: cloudUser.groupId,
+          isActive: cloudUser.isActive ?? true,
+        })),
+      ]);
+      setToast(`已导入 ${createdUsers.length} 位成员。`);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
+  }
+
   async function updateUser(userId: string, draft: MemberDraftState): Promise<{ ok: true } | { ok: false; reason: string }> {
     const validation = validateUserDraft(draft, users, groups, userId);
     if (!validation.ok) {
@@ -603,6 +642,7 @@ export function useAccountsViewModel() {
     updateGroup,
     deleteGroup,
     createUser,
+    createUsersFromText,
     updateUser,
     deleteUser,
     renameProject,
@@ -643,7 +683,7 @@ function todayDateInputValue(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function createUseNowForm(accountId: string, bookings: Booking[], now: Date, defaultUser: User): UseNowFormState {
+function createUseNowForm(accountId: string, bookings: Booking[], now: Date, defaultUser: User, accountOptions: string[] = [accountId]): UseNowFormState {
   const start = new Date(now);
   start.setSeconds(0, 0);
   const runtime = getAccountRuntime(accountId, bookings, now);
@@ -653,6 +693,7 @@ function createUseNowForm(accountId: string, bookings: Booking[], now: Date, def
 
   return {
     accountId,
+    accountOptions,
     userId: defaultUser.id,
     groupId: defaultUser.groupId,
     projectName: '',

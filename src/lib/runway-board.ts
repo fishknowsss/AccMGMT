@@ -248,6 +248,11 @@ export function validateUserDraft(draft: UserDraft, users: User[], groups: Group
     return { ok: false, reason: '请选择小组' };
   }
 
+  const duplicateName = users.some((user) => user.id !== editingUserId && user.name.trim().toLowerCase() === value.name.toLowerCase());
+  if (duplicateName) {
+    return { ok: false, reason: '这个成员已经存在' };
+  }
+
   if (value.email) {
     const duplicate = users.some((user) => user.id !== editingUserId && (user.email ?? '').trim().toLowerCase() === value.email.toLowerCase());
     if (duplicate) {
@@ -256,6 +261,38 @@ export function validateUserDraft(draft: UserDraft, users: User[], groups: Group
   }
 
   return { ok: true, value };
+}
+
+export function parseMemberImportNames(text: string, users: User[]): ValidationResult<string[]> {
+  const names = text
+    .split(/\r?\n/)
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  if (!names.length) {
+    return { ok: false, reason: '请填写成员姓名' };
+  }
+
+  const existingNames = new Set(users.map((user) => user.name.trim().toLowerCase()));
+  const duplicateExisting = names.find((name) => existingNames.has(name.toLowerCase()));
+  if (duplicateExisting) {
+    return { ok: false, reason: `这个成员已经存在：${duplicateExisting}` };
+  }
+
+  const seen = new Set<string>();
+  const duplicateInText = names.find((name) => {
+    const key = name.toLowerCase();
+    if (seen.has(key)) {
+      return true;
+    }
+    seen.add(key);
+    return false;
+  });
+  if (duplicateInText) {
+    return { ok: false, reason: `名单里有重复姓名：${duplicateInText}` };
+  }
+
+  return { ok: true, value: names };
 }
 
 export function getActiveUsers(users: User[]): User[] {
@@ -315,6 +352,20 @@ export function buildAccountsView(input: AccountsViewInput): AccountsView {
     allRows: rows,
     rows: rows.filter((row) => matchesFilters(row, input.filters, input.now)),
   };
+}
+
+export function selectAvailableAccounts(accounts: Account[], bookings: Booking[], now = new Date(), limit = 5): Account[] {
+  return accounts
+    .filter((account) => account.isActive)
+    .map((account) => ({ account, runtime: getAccountRuntime(account.id, bookings, now) }))
+    .filter((item) => item.runtime.kind === 'idle')
+    .sort((a, b) => {
+      const aHasNext = a.runtime.next ? 1 : 0;
+      const bHasNext = b.runtime.next ? 1 : 0;
+      return aHasNext - bHasNext || a.account.sortOrder - b.account.sortOrder;
+    })
+    .slice(0, limit)
+    .map((item) => item.account);
 }
 
 export function describeConflict(conflict: Booking, users: User[], groups: Group[]): string {

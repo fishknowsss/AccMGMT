@@ -173,6 +173,7 @@ export function AccountBoardPage() {
       {model.useNowForm ? (
         <UseNowDialog
           account={model.accountById.get(model.useNowForm.accountId)}
+          accountOptions={model.useNowForm.accountOptions.map((accountId) => model.accountById.get(accountId)).filter((account): account is Account => Boolean(account))}
           form={model.useNowForm}
           groups={model.activeGroups}
           onChange={model.updateUseNowForm}
@@ -657,6 +658,7 @@ function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: Boar
 function MemberEditorSection({ model }: { model: BoardModel }) {
   const defaultGroupId = model.activeGroups[0]?.id ?? model.groups[0]?.id ?? '';
   const [draft, setDraft] = useState({ name: '', groupId: defaultGroupId, isActive: true });
+  const [bulkText, setBulkText] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -670,6 +672,16 @@ function MemberEditorSection({ model }: { model: BoardModel }) {
       return;
     }
     setDraft({ name: '', groupId: defaultGroupId, isActive: true });
+    setError('');
+  }
+
+  async function handleBulkCreate() {
+    const result = await model.createUsersFromText(bulkText, draft.groupId);
+    if (!result.ok) {
+      setError(result.reason);
+      return;
+    }
+    setBulkText('');
     setError('');
   }
 
@@ -689,6 +701,22 @@ function MemberEditorSection({ model }: { model: BoardModel }) {
           </Field>
           <Button className="self-end" onClick={handleCreate} type="button" variant="primary">
             新增
+          </Button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_80px]">
+          <Field label="批量导入">
+            <textarea
+              className="min-h-[88px] w-full resize-y rounded-md border border-[#DDE1E7] bg-white px-3 py-2 text-sm leading-6 text-[#24272D] outline-none transition focus:border-[#AEB7C4] focus:ring-3 focus:ring-[#2F6BFF]/10"
+              onChange={(event) => setBulkText(event.target.value)}
+              placeholder={'每行一个姓名'}
+              value={bulkText}
+            />
+          </Field>
+          <Field label="小组">
+            <GroupSelect groups={model.activeGroups} value={draft.groupId} onChange={(groupId) => setDraft({ ...draft, groupId })} />
+          </Field>
+          <Button className="self-end" onClick={handleBulkCreate} type="button" variant="primary">
+            导入
           </Button>
         </div>
         {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{error}</div> : null}

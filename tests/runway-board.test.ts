@@ -8,6 +8,8 @@ import {
   getActiveUsers,
   getAccountRuntime,
   getNextAccountLabel,
+  parseMemberImportNames,
+  selectAvailableAccounts,
   validateGroupDeletion,
   validateGroupDraft,
   validateUserDeletion,
@@ -291,6 +293,27 @@ describe('member and group editing rules', () => {
       ok: false,
       reason: '这个邮箱已经存在',
     });
+    expect(validateUserDraft({ name: ' 小王 ', groupId: 'group-a' }, users, groups)).toEqual({
+      ok: false,
+      reason: '这个成员已经存在',
+    });
+  });
+
+  it('parses pasted member names and rejects duplicates from existing users or the pasted text', () => {
+    expect(parseMemberImportNames(' 小周\n\n陈也 \n 小赵 ', users)).toEqual({
+      ok: true,
+      value: ['小周', '陈也', '小赵'],
+    });
+
+    expect(parseMemberImportNames('小周\n小王', users)).toEqual({
+      ok: false,
+      reason: '这个成员已经存在：小王',
+    });
+
+    expect(parseMemberImportNames('小周\n 小周 ', users)).toEqual({
+      ok: false,
+      reason: '名单里有重复姓名：小周',
+    });
   });
 
   it('keeps inactive members out of new booking choices while preserving existing booking display', () => {
@@ -330,5 +353,36 @@ describe('member and group editing rules', () => {
     expect(validateGroupDeletion('group-a', users, [])).toEqual({ ok: true, value: 'group-a' });
     // default booking fixture spans 09:00–11:00, now=10:00 → currently active → should block
     expect(validateGroupDeletion('group-c', [], [booking({ groupId: 'group-c' })])).toEqual({ ok: false, reason: '这个小组当前有账号使用中，暂时无法删除' });
+  });
+});
+
+describe('selectAvailableAccounts', () => {
+  it('returns up to five idle accounts and prefers accounts without future bookings', () => {
+    const accountPool: Account[] = Array.from({ length: 7 }, (_, index) => ({
+      id: `account-${index + 1}`,
+      email: `runway${index + 1}@example.com`,
+      label: `R-${String(index + 1).padStart(2, '0')}`,
+      renewalDate: '2026-06-10',
+      isActive: true,
+      sortOrder: index + 1,
+    }));
+    const selected = selectAvailableAccounts(
+      accountPool,
+      [
+        booking({
+          accountId: 'account-1',
+          startTime: '2026-05-09T12:00:00.000Z',
+          endTime: '2026-05-09T14:00:00.000Z',
+        }),
+        booking({
+          accountId: 'account-2',
+          startTime: '2026-05-09T09:00:00.000Z',
+          endTime: '2026-05-09T11:00:00.000Z',
+        }),
+      ],
+      now,
+    );
+
+    expect(selected.map((account) => account.id)).toEqual(['account-3', 'account-4', 'account-5', 'account-6', 'account-7']);
   });
 });
