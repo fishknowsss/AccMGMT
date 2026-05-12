@@ -208,6 +208,8 @@ export function AccountBoardPage() {
 type BoardModel = ReturnType<typeof useAccountsViewModel>;
 
 function CurrentMemberSwitcher({ currentUserId, users, onChange }: { currentUserId: string; users: User[]; onChange: (userId: string) => void }) {
+  const hasCurrentUser = users.some((user) => user.id === currentUserId);
+
   return (
     <label className="flex min-w-[230px] items-center gap-2 rounded-xl border border-[#E6B5B0] bg-[#FFF1EF] px-3 py-2 shadow-[0_10px_24px_rgba(160,55,45,0.10)]">
       <span className="shrink-0 text-sm font-semibold text-[#A23A32]">当前成员</span>
@@ -216,6 +218,7 @@ function CurrentMemberSwitcher({ currentUserId, users, onChange }: { currentUser
         onChange={(event) => onChange(event.target.value)}
         value={currentUserId}
       >
+        {!hasCurrentUser && currentUserId ? <option value={currentUserId}>正在加载</option> : null}
         {users.map((user) => (
           <option key={user.id} value={user.id}>
             {user.name}

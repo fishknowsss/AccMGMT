@@ -12,4 +12,9 @@ describe('accounts view model cloud synchronization', () => {
     expect(viewModelSource).toContain('const latest = await refreshSnapshot();');
     expect(viewModelSource).toContain('await refreshSnapshot();');
   });
+
+  it('does not overwrite a saved current member while the real snapshot is still loading', () => {
+    expect(viewModelSource).toContain('currentUserId === defaultUser.id || isLoading || snapshotSource !== \'cloud\' || activeUsers.length === 0');
+    expect(viewModelSource).toContain('const [users, setUsers] = useState<User[]>([])');
+  });
 });

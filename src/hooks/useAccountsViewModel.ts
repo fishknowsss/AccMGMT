@@ -80,14 +80,16 @@ export type AccountDraftState = {
 
 export type MemberDraftState = UserDraft;
 export type GroupDraftState = GroupDraft;
+type SnapshotSource = 'loading' | 'cloud' | 'fallback';
 
 export function useAccountsViewModel() {
   const [snapshot] = useState(() => createMockSnapshot());
   const [isLoading, setIsLoading] = useState(true);
+  const [snapshotSource, setSnapshotSource] = useState<SnapshotSource>('loading');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [users, setUsers] = useState<User[]>(snapshot.users);
-  const [groups, setGroups] = useState(snapshot.groups);
+  const [users, setUsers] = useState<User[]>([]);
+  const [groups, setGroups] = useState<Array<{ id: string; name: string; isActive?: boolean }>>([]);
   const [filters, setFilters] = useState<AccountFiltersState>(emptyFilters);
   const [now, setNow] = useState(() => new Date());
 
@@ -115,6 +117,7 @@ export function useAccountsViewModel() {
     const latest = await loadLatestSnapshot();
     if (latest) {
       applySnapshot(latest);
+      setSnapshotSource('cloud');
     }
     return latest;
   }
@@ -132,7 +135,13 @@ export function useAccountsViewModel() {
         return;
       }
 
-      applySnapshot(cloudSnapshot ?? snapshot);
+      if (cloudSnapshot) {
+        applySnapshot(cloudSnapshot);
+        setSnapshotSource('cloud');
+      } else {
+        applySnapshot(snapshot);
+        setSnapshotSource('fallback');
+      }
       setIsLoading(false);
     });
 
@@ -177,7 +186,7 @@ export function useAccountsViewModel() {
   }, [activeUsers, currentUserId, snapshot.defaultUser, users]);
 
   useEffect(() => {
-    if (!defaultUser.id || currentUserId === defaultUser.id || activeUsers.length === 0) {
+    if (!defaultUser.id || currentUserId === defaultUser.id || isLoading || snapshotSource !== 'cloud' || activeUsers.length === 0) {
       return;
     }
 
@@ -186,7 +195,7 @@ export function useAccountsViewModel() {
       setCurrentUserIdState(resolved.user.id);
       saveCurrentUserId(resolved.user.id);
     }
-  }, [activeUsers, currentUserId, defaultUser]);
+  }, [activeUsers, currentUserId, defaultUser, isLoading, snapshotSource]);
 
   const view = useMemo(
     () =>
@@ -720,7 +729,7 @@ export function useAccountsViewModel() {
     activeUsers,
     activeGroups,
     currentUser: defaultUser,
-    currentUserId: defaultUser.id,
+    currentUserId: currentUserId || defaultUser.id,
     isLoading,
     now,
     filters,
