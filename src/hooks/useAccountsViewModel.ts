@@ -28,6 +28,7 @@ import {
 } from '../lib/runway-board';
 import { createMockSnapshot } from '../lib/runway-mock';
 import {
+  cancelCloudBooking,
   createCloudAccount,
   createCloudBooking,
   createCloudGroup,
@@ -38,11 +39,13 @@ import {
   getCloudSnapshot,
   releaseCloudBooking,
   renameCloudProject,
+  updateCloudBooking,
   updateCloudAccount,
   updateCloudGroup,
   updateCloudUser,
   type AccountWritePayload,
   type BookingWritePayload,
+  type BoardSnapshot,
 } from '../lib/runway-api';
 
 export type UseNowFormState = {
@@ -57,6 +60,7 @@ export type UseNowFormState = {
 };
 
 export type BookingFormState = {
+  editingBookingId: string | null;
   accountId: string;
   userId: string;
   groupId: string;
@@ -87,8 +91,32 @@ export function useAccountsViewModel() {
   const [now, setNow] = useState(() => new Date());
 
   const [toast, setToast] = useState('');
+  const [currentUserId, setCurrentUserIdState] = useState(() => readSavedCurrentUserId());
   const [useNowForm, setUseNowForm] = useState<UseNowFormState | null>(null);
   const [bookingForm, setBookingForm] = useState<BookingFormState | null>(null);
+
+  function applySnapshot(next: BoardSnapshot) {
+    setAccounts(next.accounts);
+    setBookings(next.bookings);
+    setUsers(next.users);
+    setGroups(next.groups);
+  }
+
+  async function loadLatestSnapshot(): Promise<BoardSnapshot | null> {
+    try {
+      return await getCloudSnapshot(snapshot);
+    } catch {
+      return null;
+    }
+  }
+
+  async function refreshSnapshot(): Promise<BoardSnapshot | null> {
+    const latest = await loadLatestSnapshot();
+    if (latest) {
+      applySnapshot(latest);
+    }
+    return latest;
+  }
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 30_000);
@@ -98,32 +126,35 @@ export function useAccountsViewModel() {
   useEffect(() => {
     let cancelled = false;
 
-    getCloudSnapshot(snapshot)
-      .then((cloudSnapshot) => {
-        if (cancelled) {
-          return;
-        }
+    loadLatestSnapshot().then((cloudSnapshot) => {
+      if (cancelled) {
+        return;
+      }
 
-        setAccounts(cloudSnapshot.accounts);
-        setBookings(cloudSnapshot.bookings);
-        setUsers(cloudSnapshot.users);
-        setGroups(cloudSnapshot.groups);
-        setIsLoading(false);
-      })
-      .catch(() => {
-        if (cancelled) {
-          return;
-        }
-
-        setAccounts(snapshot.accounts);
-        setBookings(snapshot.bookings);
-        setUsers(snapshot.users);
-        setGroups(snapshot.groups);
-        setIsLoading(false);
-      });
+      applySnapshot(cloudSnapshot ?? snapshot);
+      setIsLoading(false);
+    });
 
     return () => {
       cancelled = true;
+    };
+  }, [snapshot]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void refreshSnapshot();
+    }, 30_000);
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        void refreshSnapshot();
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [snapshot]);
 
@@ -140,8 +171,17 @@ export function useAccountsViewModel() {
   const activeGroups = useMemo(() => getActiveGroups(groups, users), [groups, users]);
 
   const defaultUser = useMemo(() => {
-    return activeUsers.find((user) => user.id === snapshot.defaultUser.id) ?? activeUsers[0] ?? users[0] ?? snapshot.defaultUser;
-  }, [activeUsers, snapshot.defaultUser, users]);
+    return activeUsers.find((user) => user.id === currentUserId) ?? activeUsers.find((user) => user.id === snapshot.defaultUser.id) ?? activeUsers[0] ?? users[0] ?? snapshot.defaultUser;
+  }, [activeUsers, currentUserId, snapshot.defaultUser, users]);
+
+  useEffect(() => {
+    if (!defaultUser.id || currentUserId === defaultUser.id) {
+      return;
+    }
+
+    setCurrentUserIdState(defaultUser.id);
+    saveCurrentUserId(defaultUser.id);
+  }, [currentUserId, defaultUser]);
 
   const view = useMemo(
     () =>
@@ -159,6 +199,16 @@ export function useAccountsViewModel() {
   const accountById = useMemo(() => new Map(accounts.map((account) => [account.id, account])), [accounts]);
   const userById = useMemo(() => new Map(users.map((user) => [user.id, user])), [users]);
 
+  function setCurrentUserId(userId: string) {
+    const user = activeUsers.find((item) => item.id === userId);
+    if (!user) {
+      return;
+    }
+
+    setCurrentUserIdState(user.id);
+    saveCurrentUserId(user.id);
+  }
+
   function updateFilters(next: Partial<AccountFiltersState>) {
     setFilters((current) => ({ ...current, ...next }));
   }
@@ -169,6 +219,10 @@ export function useAccountsViewModel() {
 
   function openBooking(accountId: string) {
     setBookingForm(createBookingForm(accountId, now, defaultUser));
+  }
+
+  function openEditBooking(booking: Booking) {
+    setBookingForm(createEditBookingForm(booking));
   }
 
   function updateUseNowForm(next: Partial<UseNowFormState>) {
@@ -214,10 +268,14 @@ export function useAccountsViewModel() {
       startTime: fromLocalInputValue(useNowForm.startTime),
       endTime: fromLocalInputValue(useNowForm.endTime),
     };
-    const runtime = getAccountRuntime(useNowForm.accountId, bookings, now);
+    const latest = await refreshSnapshot();
+    const latestBookings = latest?.bookings ?? bookings;
+    const latestUsers = latest?.users ?? users;
+    const latestGroups = latest?.groups ?? groups;
+    const runtime = getAccountRuntime(useNowForm.accountId, latestBookings, now);
     const validation = validateBookingDraft(draft, {
-      bookings,
-      groups,
+      bookings: latestBookings,
+      groups: latestGroups,
       mode: 'use_now',
       now,
       nextBooking: runtime.next,
@@ -226,17 +284,18 @@ export function useAccountsViewModel() {
     if (!validation.ok) {
       setUseNowForm({
         ...useNowForm,
-        error: validation.conflict ? describeConflict(validation.conflict, users, groups) : validation.reason,
+        error: validation.conflict ? describeConflict(validation.conflict, latestUsers, latestGroups) : validation.reason,
       });
       return;
     }
 
     try {
-      const booking = await saveCloudBooking(validation.value, users, groups);
+      const booking = await saveCloudBooking(validation.value, latestUsers, latestGroups);
       setBookings((current) => [...current, booking]);
       setUseNowForm(null);
       setToast('已开始使用账号。');
     } catch (error) {
+      await refreshSnapshot();
       setUseNowForm({ ...useNowForm, error: error instanceof Error ? error.message : '操作失败' });
     }
   }
@@ -254,9 +313,14 @@ export function useAccountsViewModel() {
       startTime: fromLocalInputValue(bookingForm.startTime),
       endTime: fromLocalInputValue(bookingForm.endTime),
     };
+    const latest = await refreshSnapshot();
+    const latestBookings = latest?.bookings ?? bookings;
+    const latestUsers = latest?.users ?? users;
+    const latestGroups = latest?.groups ?? groups;
     const validation = validateBookingDraft(draft, {
-      bookings,
-      groups,
+      bookings: latestBookings,
+      editingBookingId: bookingForm.editingBookingId ?? undefined,
+      groups: latestGroups,
       mode: 'reserve',
       now,
     });
@@ -264,18 +328,48 @@ export function useAccountsViewModel() {
     if (!validation.ok) {
       setBookingForm({
         ...bookingForm,
-        error: validation.conflict ? describeConflict(validation.conflict, users, groups) : validation.reason,
+        error: validation.conflict ? describeConflict(validation.conflict, latestUsers, latestGroups) : validation.reason,
       });
       return;
     }
 
     try {
-      const booking = await saveCloudBooking(validation.value, users, groups);
-      setBookings((current) => [...current, booking]);
+      const booking = bookingForm.editingBookingId
+        ? await updateSavedCloudBooking(bookingForm.editingBookingId, validation.value, latestUsers, latestGroups)
+        : await saveCloudBooking(validation.value, latestUsers, latestGroups);
+      setBookings((current) => {
+        if (!bookingForm.editingBookingId) {
+          return [...current, booking];
+        }
+
+        return current.map((item) => (item.id === booking.id ? booking : item));
+      });
       setBookingForm(null);
-      setToast('预约已保存。');
+      setToast(bookingForm.editingBookingId ? '预约已更新。' : '预约已保存。');
     } catch (error) {
+      await refreshSnapshot();
       setBookingForm({ ...bookingForm, error: error instanceof Error ? error.message : '操作失败' });
+    }
+  }
+
+  async function cancelBooking(booking: Booking) {
+    try {
+      const cloudBooking = await cancelCloudBooking(booking.id);
+      setBookings((current) =>
+        current.map((item) =>
+          item.id === booking.id
+            ? {
+                ...item,
+                endTime: cloudBooking.releasedAt ?? item.endTime,
+                status: 'cancelled',
+              }
+            : item,
+        ),
+      );
+      setToast('预约已取消。');
+    } catch (error) {
+      await refreshSnapshot();
+      setToast(error instanceof Error ? error.message : '操作失败');
     }
   }
 
@@ -295,6 +389,7 @@ export function useAccountsViewModel() {
       );
       setToast('已结束使用。');
     } catch (error) {
+      await refreshSnapshot();
       setToast(error instanceof Error ? error.message : '操作失败');
     }
   }
@@ -619,6 +714,8 @@ export function useAccountsViewModel() {
     groups,
     activeUsers,
     activeGroups,
+    currentUser: defaultUser,
+    currentUserId: defaultUser.id,
     isLoading,
     now,
     filters,
@@ -629,12 +726,15 @@ export function useAccountsViewModel() {
     accountById,
     projects,
     updateFilters,
+    setCurrentUserId,
     openUseNow,
     openBooking,
+    openEditBooking,
     updateUseNowForm,
     updateBookingForm,
     submitUseNow,
     submitBooking,
+    cancelBooking,
     releaseBooking,
     findAvailableAccount,
     copyAccountEmail,
@@ -658,6 +758,16 @@ export function useAccountsViewModel() {
 async function saveCloudBooking(draft: BookingDraft, users: User[], groups: Array<{ id: string; name: string }>): Promise<Booking> {
   const payload = bookingDraftToCloudPayload(draft, users, groups);
   const cloudBooking = await createCloudBooking(payload);
+  return cloudBookingToBooking(cloudBooking, draft);
+}
+
+async function updateSavedCloudBooking(bookingId: string, draft: BookingDraft, users: User[], groups: Array<{ id: string; name: string }>): Promise<Booking> {
+  const payload = bookingDraftToCloudPayload(draft, users, groups);
+  const cloudBooking = await updateCloudBooking(bookingId, payload);
+  return cloudBookingToBooking(cloudBooking, draft);
+}
+
+function cloudBookingToBooking(cloudBooking: { id: string; accountId: string; projectName: string; startAt: string; endAt: string; releasedAt: string | null }, draft: BookingDraft): Booking {
   return {
     id: cloudBooking.id,
     accountId: cloudBooking.accountId,
@@ -665,8 +775,8 @@ async function saveCloudBooking(draft: BookingDraft, users: User[], groups: Arra
     groupId: draft.groupId,
     projectName: cloudBooking.projectName,
     startTime: cloudBooking.startAt,
-    endTime: cloudBooking.endAt,
-    status: 'confirmed',
+    endTime: cloudBooking.releasedAt ?? cloudBooking.endAt,
+    status: cloudBooking.releasedAt ? 'cancelled' : 'confirmed',
   };
 }
 
@@ -710,6 +820,7 @@ function createBookingForm(accountId: string, now: Date, defaultUser: User): Boo
   const end = addHours(start, 4);
 
   return {
+    editingBookingId: null,
     accountId,
     userId: defaultUser.id,
     groupId: defaultUser.groupId,
@@ -718,4 +829,33 @@ function createBookingForm(accountId: string, now: Date, defaultUser: User): Boo
     endTime: toLocalInputValue(end),
     error: '',
   };
+}
+
+function createEditBookingForm(booking: Booking): BookingFormState {
+  return {
+    editingBookingId: booking.id,
+    accountId: booking.accountId,
+    userId: booking.userId,
+    groupId: booking.groupId,
+    projectName: booking.projectName,
+    startTime: toLocalInputValue(new Date(booking.startTime)),
+    endTime: toLocalInputValue(new Date(booking.endTime)),
+    error: '',
+  };
+}
+
+function readSavedCurrentUserId(): string {
+  try {
+    return window.localStorage.getItem('accmgmt.currentUserId') ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function saveCurrentUserId(userId: string) {
+  try {
+    window.localStorage.setItem('accmgmt.currentUserId', userId);
+  } catch {
+    // Ignore storage failures; the current tab still keeps the selected identity.
+  }
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createCloudAccount, createCloudBooking, mapCloudSnapshot, releaseCloudBooking } from '../src/lib/runway-api';
+import { cancelCloudBooking, createCloudAccount, createCloudBooking, mapCloudSnapshot, releaseCloudBooking, updateCloudBooking } from '../src/lib/runway-api';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -190,5 +190,72 @@ describe('cloud write headers', () => {
 
     expect(createHeaders?.['x-operator-pin']).toBeUndefined();
     expect(releaseHeaders?.['x-operator-pin']).toBeUndefined();
+  });
+
+  it('updates and cancels future bookings through the booking resource endpoint', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            booking: {
+              id: 'booking-1',
+              accountId: 'account-1',
+              userName: '小王',
+              groupName: 'A组',
+              projectName: '广告片',
+              startAt: '2026-05-09T09:00:00.000Z',
+              endAt: '2026-05-09T11:00:00.000Z',
+              releasedAt: null,
+              createdAt: '2026-05-09T05:50:00.000Z',
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            booking: {
+              id: 'booking-1',
+              accountId: 'account-1',
+              userName: '小王',
+              groupName: 'A组',
+              projectName: '广告片',
+              startAt: '2026-05-09T09:00:00.000Z',
+              endAt: '2026-05-09T11:00:00.000Z',
+              releasedAt: '2026-05-09T08:00:00.000Z',
+              createdAt: '2026-05-09T05:50:00.000Z',
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      );
+
+    await updateCloudBooking('booking-1', {
+      accountId: 'account-1',
+      userName: '小王',
+      groupName: 'A组',
+      projectName: '广告片',
+      startAt: '2026-05-09T09:00:00.000Z',
+      endAt: '2026-05-09T11:00:00.000Z',
+    });
+    await cancelCloudBooking('booking-1');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/bookings/booking-1',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: expect.objectContaining({ 'content-type': 'application/json' }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/bookings/booking-1',
+      expect.objectContaining({
+        method: 'DELETE',
+      }),
+    );
   });
 });

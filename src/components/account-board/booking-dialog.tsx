@@ -4,7 +4,7 @@ import { type Account, type Group, type User } from '../../lib/runway-board';
 import { type BookingFormState } from '../../hooks/useAccountsViewModel';
 import { Button } from '../ui/button';
 import { Dialog } from '../ui/dialog';
-import { Field, Input, Select } from '../ui/field';
+import { Field, Input } from '../ui/field';
 import { DurationStepper } from '../ui/duration-stepper';
 import { ProjectPicker } from './project-picker';
 
@@ -26,6 +26,8 @@ type BookingDialogProps = {
 
 export function BookingDialog({ form, account, users, groups, projects, onChange, onClose, onSubmit }: BookingDialogProps) {
   const durationHours = computeDuration(form.startTime, form.endTime);
+  const selectedUser = users.find((user) => user.id === form.userId);
+  const selectedGroup = groups.find((group) => group.id === form.groupId);
 
   function handleStartTimeChange(startTime: string) {
     const newEnd = toLocalInputValue(addHours(new Date(startTime), durationHours));
@@ -57,38 +59,17 @@ export function BookingDialog({ form, account, users, groups, projects, onChange
         }
         onClose={onClose}
         bodyClassName="sm:overflow-visible"
-        title="预约账号"
+        title={form.editingBookingId ? '修改预约' : '预约账号'}
       >
         <Field label="账号邮箱">
           <Input readOnly value={account?.email ?? ''} />
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="小组">
-            <Select
-              onChange={(event) => {
-                const groupId = event.target.value;
-                const firstUser = users.find((u) => u.groupId === groupId);
-                onChange({ groupId, ...(firstUser ? { userId: firstUser.id } : {}) });
-              }}
-              value={form.groupId}
-            >
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </Select>
+            <Input readOnly value={selectedGroup?.name ?? ''} />
           </Field>
           <Field label="使用人">
-            <Select onChange={(event) => onChange({ userId: event.target.value })} value={form.userId}>
-              {users
-                .filter((u) => u.groupId === form.groupId)
-                .map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}
-                  </option>
-                ))}
-            </Select>
+            <Input readOnly value={selectedUser?.name ?? ''} />
           </Field>
         </div>
         <Field label="项目">

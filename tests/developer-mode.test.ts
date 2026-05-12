@@ -36,6 +36,7 @@ describe('developer mode sequence', () => {
     expect(canUseDeveloperShortcut('accounts')).toBe(true);
     expect(canUseDeveloperShortcut('board')).toBe(false);
     expect(canUseDeveloperShortcut('groups')).toBe(false);
+    expect(canUseDeveloperShortcut('projects')).toBe(false);
   });
 
   it('unlocks after seven taps on the settings summary trigger', () => {

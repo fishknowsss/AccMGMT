@@ -27,6 +27,8 @@ type UseNowDialogProps = {
 
 export function UseNowDialog({ form, account, accountOptions, users, groups, projects, onChange, onClose, onSubmit }: UseNowDialogProps) {
   const durationHours = computeDuration(form.startTime, form.endTime);
+  const selectedUser = users.find((user) => user.id === form.userId);
+  const selectedGroup = groups.find((group) => group.id === form.groupId);
 
   function handleDurationChange(hours: number) {
     const newEnd = toLocalInputValue(addHours(new Date(form.startTime), hours));
@@ -70,31 +72,10 @@ export function UseNowDialog({ form, account, accountOptions, users, groups, pro
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="小组">
-            <Select
-              onChange={(event) => {
-                const groupId = event.target.value;
-                const firstUser = users.find((u) => u.groupId === groupId);
-                onChange({ groupId, ...(firstUser ? { userId: firstUser.id } : {}) });
-              }}
-              value={form.groupId}
-            >
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </Select>
+            <Input readOnly value={selectedGroup?.name ?? ''} />
           </Field>
           <Field label="使用人">
-            <Select onChange={(event) => onChange({ userId: event.target.value })} value={form.userId}>
-              {users
-                .filter((u) => u.groupId === form.groupId)
-                .map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}
-                  </option>
-                ))}
-            </Select>
+            <Input readOnly value={selectedUser?.name ?? ''} />
           </Field>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">

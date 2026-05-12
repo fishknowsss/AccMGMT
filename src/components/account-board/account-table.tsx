@@ -1,5 +1,5 @@
 import { CalendarPlus, Play, Square } from 'lucide-react';
-import { formatBookingRange, type AccountRow } from '../../lib/runway-board';
+import { canManageFutureBooking, formatBookingRange, type AccountRow, type Booking } from '../../lib/runway-board';
 import { Button } from '../ui/button';
 import { RenewalBadge } from './renewal-badge';
 import { StatusBadge } from './status-badge';
@@ -7,13 +7,16 @@ import { StatusBadge } from './status-badge';
 type AccountTableProps = {
   rows: AccountRow[];
   now: Date;
+  currentUserId: string;
   onUseNow: (accountId: string) => void;
   onReserve: (accountId: string) => void;
+  onEditBooking: (booking: Booking) => void;
+  onCancelBooking: (booking: Booking) => void;
   onCopyEmail: (email: string) => void;
   onRelease: (row: AccountRow) => void;
 };
 
-export function AccountTable({ rows, now, onUseNow, onReserve, onCopyEmail, onRelease }: AccountTableProps) {
+export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, onEditBooking, onCancelBooking, onCopyEmail, onRelease }: AccountTableProps) {
   return (
     <section className="flex flex-col overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)] lg:min-h-0 lg:flex-1">
       <div className="flex shrink-0 items-center justify-between border-b border-[#E6EAF0] bg-[#FCFDFE] px-4 py-3">
@@ -33,9 +36,12 @@ export function AccountTable({ rows, now, onUseNow, onReserve, onCopyEmail, onRe
                 key={row.account.id}
                 now={now}
                 onCopyEmail={onCopyEmail}
+                onCancelBooking={onCancelBooking}
+                onEditBooking={onEditBooking}
                 onRelease={onRelease}
                 onReserve={onReserve}
                 onUseNow={onUseNow}
+                currentUserId={currentUserId}
                 row={row}
               />
             ))}
@@ -44,13 +50,13 @@ export function AccountTable({ rows, now, onUseNow, onReserve, onCopyEmail, onRe
       </div>
 
       <div className="hidden min-h-0 flex-1 overflow-auto lg:block">
-        <table className="w-full min-w-[1180px] border-collapse text-left">
+        <table className="w-full min-w-[1260px] border-collapse text-left">
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-[#E7EAF0] bg-[#F7F9FB] text-[13px] font-semibold text-[#667085]">
               <th className="w-[340px] px-4 py-3">账号</th>
               <th className="w-[245px] px-4 py-3">状态</th>
               <th className="w-[180px] px-4 py-3">当前使用</th>
-              <th className="w-[190px] px-4 py-3">下一预约</th>
+              <th className="w-[260px] px-4 py-3">下一预约</th>
               <th className="w-[135px] px-4 py-3">续费日期</th>
               <th className="w-[170px] px-4 py-3 text-right">操作</th>
             </tr>
@@ -88,12 +94,13 @@ export function AccountTable({ rows, now, onUseNow, onReserve, onCopyEmail, onRe
                 </td>
                 <td className="h-[68px] px-4 py-0 align-middle">
                   {row.next ? (
-                    <div className="grid min-w-0 gap-1">
-                      <span className="truncate font-mono text-sm tabular-nums text-[#344154]">{formatBookingRange(row.next.startTime, row.next.endTime, now)}</span>
-                      <span className="truncate text-sm text-[#667085]">
-                        {row.next.user?.name ?? '未知成员'} · {row.next.projectName}
-                      </span>
-                    </div>
+                    <NextBookingSummary
+                      booking={row.next}
+                      currentUserId={currentUserId}
+                      now={now}
+                      onCancelBooking={onCancelBooking}
+                      onEditBooking={onEditBooking}
+                    />
                   ) : (
                     <span className="text-sm text-[#8A93A3]">暂无预约</span>
                   )}
@@ -136,11 +143,14 @@ export function AccountTable({ rows, now, onUseNow, onReserve, onCopyEmail, onRe
   );
 }
 
-function AccountCard({ row, now, onUseNow, onReserve, onCopyEmail, onRelease }: {
+function AccountCard({ row, now, currentUserId, onUseNow, onReserve, onEditBooking, onCancelBooking, onCopyEmail, onRelease }: {
   row: AccountRow;
   now: Date;
+  currentUserId: string;
   onUseNow: (accountId: string) => void;
   onReserve: (accountId: string) => void;
+  onEditBooking: (booking: Booking) => void;
+  onCancelBooking: (booking: Booking) => void;
   onCopyEmail: (email: string) => void;
   onRelease: (row: AccountRow) => void;
 }) {
@@ -172,8 +182,13 @@ function AccountCard({ row, now, onUseNow, onReserve, onCopyEmail, onRelease }: 
         </div>
       ) : row.next ? (
         <div className="mb-3 rounded-lg bg-[#F5F7FA] px-3 py-2 text-sm text-[#667085]">
-          <span className="font-mono tabular-nums">{formatBookingRange(row.next.startTime, row.next.endTime, now)}</span>
-          <span> · {row.next.user?.name ?? '未知成员'}{row.next.projectName ? ` · ${row.next.projectName}` : ''}</span>
+          <NextBookingSummary
+            booking={row.next}
+            currentUserId={currentUserId}
+            now={now}
+            onCancelBooking={onCancelBooking}
+            onEditBooking={onEditBooking}
+          />
         </div>
       ) : null}
 
@@ -196,6 +211,43 @@ function AccountCard({ row, now, onUseNow, onReserve, onCopyEmail, onRelease }: 
         <div className="ml-auto">
           <RenewalBadge date={row.account.renewalDate} state={row.renewalState} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function NextBookingSummary({
+  booking,
+  currentUserId,
+  now,
+  onEditBooking,
+  onCancelBooking,
+}: {
+  booking: NonNullable<AccountRow['next']>;
+  currentUserId: string;
+  now: Date;
+  onEditBooking: (booking: Booking) => void;
+  onCancelBooking: (booking: Booking) => void;
+}) {
+  const canManage = canManageFutureBooking(booking, currentUserId, now);
+
+  return (
+    <div className="grid min-w-0 gap-1">
+      <span className="truncate font-mono text-sm tabular-nums text-[#344154]">{formatBookingRange(booking.startTime, booking.endTime, now)}</span>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="min-w-0 flex-1 truncate text-sm text-[#667085]">
+          {booking.user?.name ?? '未知成员'} · {booking.projectName}
+        </span>
+        {canManage ? (
+          <span className="flex shrink-0 items-center gap-1">
+            <Button className="h-7 px-2 text-xs" onClick={() => onEditBooking(booking)} size="sm" type="button" variant="ghost">
+              改期
+            </Button>
+            <Button className="h-7 px-2 text-xs" onClick={() => onCancelBooking(booking)} size="sm" type="button" variant="ghost">
+              取消
+            </Button>
+          </span>
+        ) : null}
       </div>
     </div>
   );

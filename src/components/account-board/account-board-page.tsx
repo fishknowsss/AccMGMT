@@ -1,4 +1,4 @@
-import { LayoutDashboard, Settings, Trash2, UsersRound, FolderOpen } from 'lucide-react';
+import { LayoutDashboard, Settings, UsersRound, FolderOpen } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAccountsViewModel, type AccountDraftState } from '../../hooks/useAccountsViewModel';
 import { boardSections, getBoardSectionMeta, type BoardSection } from '../../lib/board-navigation';
@@ -10,7 +10,7 @@ import { AccountTable } from './account-table';
 import { BookingDialog } from './booking-dialog';
 import { OperationsStrip } from './operations-strip';
 import { Button } from '../ui/button';
-import { Field, Input } from '../ui/field';
+import { Field, Input, Select } from '../ui/field';
 import { UseNowDialog } from './use-now-dialog';
 
 const sectionIcons = {
@@ -22,10 +22,6 @@ const sectionIcons = {
 
 const primarySections = boardSections.filter((section) => section.id !== 'accounts');
 const settingsSection = boardSections.find((section) => section.id === 'accounts') ?? boardSections[1];
-export const groupEditorListClassName = 'grid max-h-[280px] divide-y divide-[#EEF2F6] overflow-y-auto';
-export const groupEditorRowClassName = 'grid min-h-[68px] gap-3 px-5 py-3 sm:grid-cols-[1fr_110px_40px] sm:items-center';
-export const memberEditorListClassName = 'grid max-h-[360px] divide-y divide-[#EEF2F6] overflow-y-scroll [scrollbar-gutter:stable]';
-export const memberEditorRowClassName = 'grid min-h-[68px] items-center gap-x-3 gap-y-2 px-5 py-3 sm:grid-cols-[minmax(0,1fr)_160px_80px_40px]';
 
 export function AccountBoardPage() {
   const model = useAccountsViewModel();
@@ -105,6 +101,9 @@ export function AccountBoardPage() {
                 <time dateTime={model.now.toISOString()}>{formatDateTime(model.now)}</time>
               </div>
             </div>
+            <div className="border-t border-[#EEF2F6] px-4 py-3 lg:hidden">
+              <CurrentMemberSwitcher currentUserId={model.currentUserId} users={model.activeUsers} onChange={model.setCurrentUserId} />
+            </div>
             {/* Desktop: full layout */}
             <div className="hidden px-5 py-4 lg:block">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -117,6 +116,7 @@ export function AccountBoardPage() {
                   <h1 className="text-[28px] font-semibold leading-tight tracking-normal text-[#15171B]">{activeMeta.label}</h1>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  <CurrentMemberSwitcher currentUserId={model.currentUserId} users={model.activeUsers} onChange={model.setCurrentUserId} />
                   <div className="rounded-lg bg-[#F2F5F8] px-3 py-2 font-mono text-sm tabular-nums text-[#344154]">
                     <time dateTime={model.now.toISOString()}>{formatDateTime(model.now)}</time>
                   </div>
@@ -159,14 +159,17 @@ export function AccountBoardPage() {
               now={model.now}
               onRelease={(row) => row.current && model.releaseBooking(row.current)}
               onReserve={model.openBooking}
+              onEditBooking={model.openEditBooking}
+              onCancelBooking={model.cancelBooking}
               onCopyEmail={model.copyAccountEmail}
               onUseNow={model.openUseNow}
+              currentUserId={model.currentUserId}
               rows={model.view.rows}
             />
           ) : null}
           {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} onDeveloperTap={handleDeveloperTap} /> : null}
-          {activeSection === 'groups' ? <MemberGroupsPanel developerMode={developerMode} model={model} /> : null}
-          {activeSection === 'projects' ? <ProjectsPanel developerMode={developerMode} model={model} /> : null}
+          {activeSection === 'groups' ? <MemberGroupsPanel model={model} /> : null}
+          {activeSection === 'projects' ? <ProjectsPanel model={model} /> : null}
         </main>
       </div>
 
@@ -203,6 +206,21 @@ export function AccountBoardPage() {
 }
 
 type BoardModel = ReturnType<typeof useAccountsViewModel>;
+
+function CurrentMemberSwitcher({ currentUserId, users, onChange }: { currentUserId: string; users: User[]; onChange: (userId: string) => void }) {
+  return (
+    <label className="flex min-w-[190px] items-center gap-2">
+      <span className="shrink-0 text-sm font-medium text-[#667085]">当前成员</span>
+      <Select className="h-9 min-w-0 flex-1 bg-white" onChange={(event) => onChange(event.target.value)} value={currentUserId}>
+        {users.map((user) => (
+          <option key={user.id} value={user.id}>
+            {user.name}
+          </option>
+        ))}
+      </Select>
+    </label>
+  );
+}
 
 function BoardLoadingState() {
   return (
@@ -252,34 +270,8 @@ function SiteSettingsPanel({ developerMode, model, onDeveloperTap }: { developer
   );
 }
 
-function ProjectsPanel({ developerMode, model }: { developerMode: boolean; model: BoardModel }) {
+function ProjectsPanel({ model }: { model: BoardModel }) {
   const { projects } = model;
-  const [editing, setEditing] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [error, setError] = useState('');
-
-  function startEdit(name: string) {
-    setEditing(name);
-    setEditName(name);
-    setError('');
-  }
-
-  async function handleSave(oldName: string) {
-    const result = await model.renameProject(oldName, editName);
-    if (!result.ok) {
-      setError(result.reason);
-      return;
-    }
-    setEditing(null);
-    setError('');
-  }
-
-  async function handleDelete(name: string) {
-    const result = await model.deleteProject(name);
-    if (!result.ok) {
-      setError(result.reason);
-    }
-  }
 
   return (
     <div className="overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
@@ -287,47 +279,13 @@ function ProjectsPanel({ developerMode, model }: { developerMode: boolean; model
         <ul className="divide-y divide-[#EEF2F6]">
           {projects.map((p) => (
             <li className="flex items-center gap-2 px-5 py-3" key={p}>
-              {developerMode && editing === p ? (
-                <>
-                  <input
-                    autoFocus
-                    className="flex-1 rounded-lg border border-[#DDE3EA] bg-[#FCFDFE] px-3 py-1.5 text-sm text-[#171A1F] outline-none focus:border-[#1C2430]"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') void handleSave(p);
-                      if (e.key === 'Escape') { setEditing(null); setError(''); }
-                    }}
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                  />
-                  <Button onClick={() => void handleSave(p)} size="sm" type="button" variant="ghost">保存</Button>
-                  <Button onClick={() => { setEditing(null); setError(''); }} size="sm" type="button" variant="ghost">取消</Button>
-                </>
-              ) : (
-                <>
-                  <span className="flex-1 text-sm text-[#344154]">{p}</span>
-                  {developerMode ? (
-                    <>
-                      <Button aria-label="编辑项目" onClick={() => startEdit(p)} size="icon" type="button" variant="ghost">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                          <path d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 16.5H9v-3.5z" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </Button>
-                      <Button aria-label="删除项目" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={() => void handleDelete(p)} size="icon" type="button" variant="ghost">
-                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                          <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 0h8" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </Button>
-                    </>
-                  ) : null}
-                </>
-              )}
+              <span className="flex-1 text-sm text-[#344154]">{p}</span>
             </li>
           ))}
         </ul>
       ) : (
         <div className="px-5 py-10 text-center text-sm text-[#98A7B7]">暂无项目。在使用或预约账号时填写项目名即可添加。</div>
       )}
-      {error ? <p className="border-t border-[#EEF2F6] px-5 py-3 text-xs text-[#8D3F36]">{error}</p> : null}
     </div>
   );
 }
@@ -524,7 +482,7 @@ function saveAccountDraft(account: Account, draft: AccountDraftState, onSave: Bo
   void onSave(account.id, draft);
 }
 
-function MemberGroupsPanel({ developerMode, model }: { developerMode: boolean; model: BoardModel }) {
+function MemberGroupsPanel({ model }: { model: BoardModel }) {
   return (
     <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:overflow-hidden">
       <section className="shrink-0 overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
@@ -538,13 +496,6 @@ function MemberGroupsPanel({ developerMode, model }: { developerMode: boolean; m
           ))}
         </div>
       </section>
-
-      {developerMode ? (
-        <section className="grid gap-4 lg:min-h-0 lg:flex-1 xl:grid-cols-[minmax(320px,0.8fr)_minmax(520px,1.2fr)]">
-          <GroupEditorSection model={model} />
-          <MemberEditorSection model={model} />
-        </section>
-      ) : null}
     </div>
   );
 }
@@ -568,215 +519,6 @@ function GroupSummaryRow({ group, model }: { group: Group; model: BoardModel }) 
       <span className="text-right font-mono text-sm tabular-nums text-[#667085]">占用 {activeBookings.length}</span>
       <span className="text-right font-mono text-sm tabular-nums text-[#667085]">预约 {nextBookings.length}</span>
     </div>
-  );
-}
-
-function GroupEditorSection({ model }: { model: BoardModel }) {
-  const [draft, setDraft] = useState({ name: '', isActive: true });
-  const [error, setError] = useState('');
-
-  async function handleCreate() {
-    const result = await model.createGroup(draft);
-    if (!result.ok) {
-      setError(result.reason);
-      return;
-    }
-    setDraft({ name: '', isActive: true });
-    setError('');
-  }
-
-  return (
-    <section className="flex flex-col overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)] lg:min-h-0">
-      <div className="flex items-center justify-between border-b border-[#E6EAF0] bg-[#FCFDFE] px-5 py-4">
-        <h2 className="text-base font-semibold text-[#171A1F]">小组编辑</h2>
-        <span className="font-mono text-sm tabular-nums text-[#667085]">{model.groups.length} 个小组</span>
-      </div>
-      <div className="grid shrink-0 gap-3 border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-4">
-        <div className="grid gap-3 sm:grid-cols-[1fr_100px]">
-          <Field label="小组名称">
-            <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-          </Field>
-          <Button className="self-end" onClick={handleCreate} type="button" variant="primary">
-            新增
-          </Button>
-        </div>
-        {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{error}</div> : null}
-      </div>
-      <div className={groupEditorListClassName}>
-        {model.groups.map((group) => (
-          <GroupEditor group={group} key={group.id} onDelete={model.deleteGroup} onSave={model.updateGroup} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: BoardModel['deleteGroup']; onSave: BoardModel['updateGroup'] }) {
-  const [draft, setDraft] = useState({ name: group.name, isActive: group.isActive !== false });
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    setDraft({ name: group.name, isActive: group.isActive !== false });
-    setError('');
-  }, [group]);
-
-  async function handleSave() {
-    const result = await onSave(group.id, draft);
-    setError(result.ok ? '' : result.reason);
-  }
-
-  async function handleDelete() {
-    const result = await onDelete(group.id);
-    setError(result.ok ? '' : result.reason);
-  }
-
-  return (
-    <article className={groupEditorRowClassName}>
-      <Input value={draft.name} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-      <label className="flex items-center gap-2 text-sm font-medium text-[#344154]">
-        <input
-          checked={draft.isActive}
-          className="h-4 w-4 accent-[#1C2430]"
-          onChange={async (event) => {
-            const next = { ...draft, isActive: event.target.checked };
-            setDraft(next);
-            const result = await onSave(group.id, next);
-            setError(result.ok ? '' : result.reason);
-          }}
-          type="checkbox"
-        />
-        启用
-      </label>
-      <Button aria-label="删除小组" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={handleDelete} size="icon" type="button" variant="ghost">
-        <Trash2 size={16} />
-      </Button>
-      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] sm:col-span-3">{error}</div> : null}
-    </article>
-  );
-}
-
-function MemberEditorSection({ model }: { model: BoardModel }) {
-  const defaultGroupId = model.activeGroups[0]?.id ?? model.groups[0]?.id ?? '';
-  const [draft, setDraft] = useState({ name: '', groupId: defaultGroupId, isActive: true });
-  const [error, setError] = useState('');
-  const nameCount = draft.name.split(/\r?\n/).map((name) => name.trim()).filter(Boolean).length;
-
-  useEffect(() => {
-    setDraft((current) => (current.groupId ? current : { ...current, groupId: defaultGroupId }));
-  }, [defaultGroupId]);
-
-  async function handleCreate() {
-    const result = await model.createUsersFromText(draft.name, draft.groupId);
-    if (!result.ok) {
-      setError(result.reason);
-      return;
-    }
-    setDraft({ name: '', groupId: defaultGroupId, isActive: true });
-    setError('');
-  }
-
-  return (
-    <section className="flex flex-col overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)] lg:min-h-0">
-      <div className="flex items-center justify-between border-b border-[#E6EAF0] bg-[#FCFDFE] px-5 py-4">
-        <h2 className="text-base font-semibold text-[#171A1F]">成员编辑</h2>
-        <span className="font-mono text-sm tabular-nums text-[#667085]">{model.activeUsers.length} 位成员</span>
-      </div>
-      <div className="grid shrink-0 gap-3 border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-3">
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_80px]">
-          <Field label="姓名">
-            <textarea
-              className="min-h-10 max-h-[104px] w-full resize-y rounded-md border border-[#DDE1E7] bg-white px-3 py-2 text-sm leading-5 text-[#24272D] outline-none transition focus:border-[#AEB7C4] focus:ring-3 focus:ring-[#2F6BFF]/10"
-              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-              placeholder="可粘贴多行姓名"
-              rows={1}
-              value={draft.name}
-            />
-          </Field>
-          <Field label="小组">
-            <GroupSelect groups={model.activeGroups} value={draft.groupId} onChange={(groupId) => setDraft({ ...draft, groupId })} />
-          </Field>
-          <Button className="self-end" onClick={handleCreate} type="button" variant="primary">
-            {nameCount > 1 ? '导入' : '新增'}
-          </Button>
-        </div>
-        {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{error}</div> : null}
-      </div>
-      <div className={memberEditorListClassName}>
-        {model.users.map((user) => (
-          <MemberEditor groups={model.activeGroups} key={user.id} onDelete={model.deleteUser} onSave={model.updateUser} user={user} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function MemberEditor({ groups, onDelete, onSave, user }: { groups: Group[]; onDelete: BoardModel['deleteUser']; onSave: BoardModel['updateUser']; user: User }) {
-  const [draft, setDraft] = useState({ name: user.name, email: user.email, groupId: user.groupId, isActive: user.isActive !== false });
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    setDraft({ name: user.name, email: user.email, groupId: user.groupId, isActive: user.isActive !== false });
-    setError('');
-  }, [user]);
-
-  async function handleSave() {
-    const result = await onSave(user.id, draft);
-    setError(result.ok ? '' : result.reason);
-  }
-
-  async function handleDelete() {
-    const result = await onDelete(user.id);
-    setError(result.ok ? '' : result.reason);
-  }
-
-  return (
-    <article className={memberEditorRowClassName}>
-      <Input value={draft.name} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-      <GroupSelect
-        groups={groups}
-        value={draft.groupId}
-        onChange={async (groupId) => {
-          const next = { ...draft, groupId };
-          setDraft(next);
-          const result = await onSave(user.id, next);
-          setError(result.ok ? '' : result.reason);
-        }}
-      />
-      <label className="flex items-center gap-2 text-sm font-medium text-[#344154]">
-        <input
-          checked={draft.isActive}
-          className="h-4 w-4 accent-[#1C2430]"
-          onChange={async (event) => {
-            const next = { ...draft, isActive: event.target.checked };
-            setDraft(next);
-            const result = await onSave(user.id, next);
-            setError(result.ok ? '' : result.reason);
-          }}
-          type="checkbox"
-        />
-        启用
-      </label>
-      <Button aria-label="删除成员" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={handleDelete} size="icon" type="button" variant="ghost">
-        <Trash2 size={16} />
-      </Button>
-      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] sm:col-span-4">{error}</div> : null}
-    </article>
-  );
-}
-
-function GroupSelect({ groups, value, onChange }: { groups: Group[]; value: string; onChange: (groupId: string) => void }) {
-  return (
-    <select
-      className="h-10 w-full rounded-lg border border-[#DDE3EA] bg-white px-3 text-sm text-[#202329] outline-none transition focus:border-[#98A7B7] focus:ring-2 focus:ring-[#D7E3F6]"
-      onChange={(event) => onChange(event.target.value)}
-      value={value}
-    >
-      {groups.map((group) => (
-        <option key={group.id} value={group.id}>
-          {group.name}
-        </option>
-      ))}
-    </select>
   );
 }
 

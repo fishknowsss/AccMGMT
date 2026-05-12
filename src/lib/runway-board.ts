@@ -91,6 +91,7 @@ export type AccountsView = {
 export type BookingValidationContext = {
   bookings: Booking[];
   groups?: Group[];
+  editingBookingId?: string;
   mode: 'use_now' | 'reserve';
   now: Date;
   nextBooking?: Booking | null;
@@ -138,9 +139,13 @@ export function getAccountRuntime(accountId: string, bookings: Booking[], now = 
   };
 }
 
-export function findBookingConflict(slot: Slot, bookings: Booking[]): Booking | null {
+export function findBookingConflict(slot: Slot, bookings: Booking[], ignoredBookingId?: string): Booking | null {
   return (
     bookings.find((booking) => {
+      if (booking.id === ignoredBookingId) {
+        return false;
+      }
+
       if (booking.accountId !== slot.accountId || booking.status !== 'confirmed') {
         return false;
       }
@@ -195,7 +200,7 @@ export function validateBookingDraft(draft: BookingDraft, context: BookingValida
     return { ok: false, reason: `结束时间不能晚于下一预约 ${formatShortTime(context.nextBooking.startTime)}` };
   }
 
-  const conflict = findBookingConflict(value, context.bookings);
+  const conflict = findBookingConflict(value, context.bookings, context.editingBookingId);
   if (conflict) {
     return { ok: false, reason: '该时间段与已有预约冲突', conflict };
   }
@@ -204,6 +209,7 @@ export function validateBookingDraft(draft: BookingDraft, context: BookingValida
     const concurrentCount = context.bookings.filter(
       (b) =>
         b.userId === value.userId &&
+        b.id !== context.editingBookingId &&
         b.status === 'confirmed' &&
         timestamp(b.startTime) < timestamp(value.endTime) &&
         timestamp(b.endTime) > timestamp(value.startTime),
@@ -383,6 +389,14 @@ export function canReleaseBooking(booking: Booking | null): boolean {
   }
 
   return true;
+}
+
+export function canManageFutureBooking(booking: Booking | null, currentUserId: string, now = new Date()): boolean {
+  if (!booking || booking.status !== 'confirmed' || !currentUserId) {
+    return false;
+  }
+
+  return booking.userId === currentUserId && timestamp(booking.startTime) > now.getTime();
 }
 
 export function formatBookingRange(startTime: string, endTime: string, now = new Date()): string {

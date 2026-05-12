@@ -8,6 +8,7 @@ import {
   getActiveUsers,
   getAccountRuntime,
   getNextAccountLabel,
+  canManageFutureBooking,
   parseMemberImportNames,
   selectAvailableAccounts,
   validateGroupDeletion,
@@ -244,6 +245,101 @@ describe('validateBookingDraft', () => {
     );
 
     expect(result.ok).toBe(true);
+  });
+
+  it('allows editing a booking without treating the original booking as a conflict', () => {
+    const result = validateBookingDraft(
+      {
+        accountId: 'account-1',
+        userId: 'user-1',
+        groupId: 'group-a',
+        projectName: '广告片',
+        startTime: '2026-05-09T12:30:00.000Z',
+        endTime: '2026-05-09T14:30:00.000Z',
+      },
+      {
+        bookings: [
+          booking({
+            id: 'booking-1',
+            startTime: '2026-05-09T12:00:00.000Z',
+            endTime: '2026-05-09T14:00:00.000Z',
+          }),
+        ],
+        editingBookingId: 'booking-1',
+        mode: 'reserve',
+        now,
+        groups,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('still blocks editing a booking into another confirmed booking', () => {
+    const result = validateBookingDraft(
+      {
+        accountId: 'account-1',
+        userId: 'user-1',
+        groupId: 'group-a',
+        projectName: '广告片',
+        startTime: '2026-05-09T15:30:00.000Z',
+        endTime: '2026-05-09T16:30:00.000Z',
+      },
+      {
+        bookings: [
+          booking({
+            id: 'booking-1',
+            startTime: '2026-05-09T12:00:00.000Z',
+            endTime: '2026-05-09T14:00:00.000Z',
+          }),
+          booking({
+            id: 'booking-2',
+            startTime: '2026-05-09T15:00:00.000Z',
+            endTime: '2026-05-09T17:00:00.000Z',
+          }),
+        ],
+        editingBookingId: 'booking-1',
+        mode: 'reserve',
+        now,
+        groups,
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.conflict?.id).toBe('booking-2');
+    }
+  });
+});
+
+describe('canManageFutureBooking', () => {
+  it('allows the current user to manage their future booking', () => {
+    expect(
+      canManageFutureBooking(
+        booking({
+          userId: 'user-1',
+          startTime: '2026-05-09T12:00:00.000Z',
+          endTime: '2026-05-09T14:00:00.000Z',
+        }),
+        'user-1',
+        now,
+      ),
+    ).toBe(true);
+  });
+
+  it('does not allow managing other members bookings or already started bookings', () => {
+    expect(
+      canManageFutureBooking(
+        booking({
+          userId: 'user-2',
+          startTime: '2026-05-09T12:00:00.000Z',
+          endTime: '2026-05-09T14:00:00.000Z',
+        }),
+        'user-1',
+        now,
+      ),
+    ).toBe(false);
+    expect(canManageFutureBooking(booking({ userId: 'user-1' }), 'user-1', now)).toBe(false);
   });
 });
 

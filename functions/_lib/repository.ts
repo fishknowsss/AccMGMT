@@ -42,6 +42,8 @@ export type D1Repository = {
   createAccount(input: { email: string; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number }): Promise<Account>;
   updateAccount(id: string, input: { email: string; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number }): Promise<Account | null>;
   createBooking(input: BookingDraft): Promise<Booking>;
+  updateFutureBooking(id: string, input: BookingDraft, now: string): Promise<Booking | null>;
+  cancelFutureBooking(id: string, releasedAt: string): Promise<Booking | null>;
   releaseBooking(id: string, releasedAt: string): Promise<Booking | null>;
   listUsers(): Promise<User[]>;
   createUser(input: { name: string; email: string | null; groupId: string; isActive: boolean }): Promise<User>;
@@ -134,6 +136,54 @@ export function createRepository(db: D1Database): D1Repository {
         throw new Error('BOOKING_CREATE_FAILED');
       }
       return booking;
+    },
+
+    async updateFutureBooking(id, input, now) {
+      const conflict = await db
+        .prepare(
+          `SELECT id
+           FROM bookings
+           WHERE id != ?1
+             AND account_id = ?2
+             AND released_at IS NULL
+             AND start_at < ?4
+             AND ?3 < end_at
+           LIMIT 1`,
+        )
+        .bind(id, input.accountId, input.startAt, input.endAt)
+        .first<{ id: string }>();
+
+      if (conflict) {
+        throw new Error('BOOKING_CONFLICT');
+      }
+
+      const result = await db
+        .prepare(
+          `UPDATE bookings
+           SET account_id = ?1, user_name = ?2, group_name = ?3, project_name = ?4, start_at = ?5, end_at = ?6
+           WHERE id = ?7 AND released_at IS NULL AND start_at > ?8`,
+        )
+        .bind(input.accountId, input.userName, input.groupName, input.projectName, input.startAt, input.endAt, id, now)
+        .run();
+
+      if (getChangedRows(result) === 0) {
+        return null;
+      }
+
+      return getBookingById(db, id);
+    },
+
+    async cancelFutureBooking(id, releasedAt) {
+      const result = await db
+        .prepare('UPDATE bookings SET released_at = ?1 WHERE id = ?2 AND released_at IS NULL AND start_at > ?1')
+        .bind(releasedAt, id)
+        .run();
+
+      if (getChangedRows(result) === 0) {
+        return null;
+      }
+
+      return getBookingById(db, id);
     },
 
     async releaseBooking(id, releasedAt) {

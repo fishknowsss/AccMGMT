@@ -163,6 +163,22 @@ export async function releaseCloudBooking(bookingId: string): Promise<CloudBooki
   return readCloudEntity(response, 'booking');
 }
 
+export async function updateCloudBooking(bookingId: string, payload: BookingWritePayload): Promise<CloudBooking> {
+  const response = await fetch(`/api/bookings/${bookingId}`, {
+    method: 'PATCH',
+    headers: bookingWriteHeaders(),
+    body: JSON.stringify(payload),
+  });
+  return readCloudEntity(response, 'booking');
+}
+
+export async function cancelCloudBooking(bookingId: string): Promise<CloudBooking> {
+  const response = await fetch(`/api/bookings/${bookingId}`, {
+    method: 'DELETE',
+  });
+  return readCloudEntity(response, 'booking');
+}
+
 export async function createCloudUser(payload: { name: string; email?: string; groupId: string; isActive: boolean }): Promise<CloudUser> {
   const response = await fetch('/api/users', {
     method: 'POST',
