@@ -90,6 +90,7 @@ export type AccountsView = {
 
 export type BookingValidationContext = {
   bookings: Booking[];
+  groups?: Group[];
   mode: 'use_now' | 'reserve';
   now: Date;
   nextBooking?: Booking | null;
@@ -199,16 +200,18 @@ export function validateBookingDraft(draft: BookingDraft, context: BookingValida
     return { ok: false, reason: '该时间段与已有预约冲突', conflict };
   }
 
-  const concurrentCount = context.bookings.filter(
-    (b) =>
-      b.userId === value.userId &&
-      b.status === 'confirmed' &&
-      timestamp(b.startTime) < timestamp(value.endTime) &&
-      timestamp(b.endTime) > timestamp(value.startTime),
-  ).length;
+  if (!isBossGroup(value.groupId, context.groups ?? [])) {
+    const concurrentCount = context.bookings.filter(
+      (b) =>
+        b.userId === value.userId &&
+        b.status === 'confirmed' &&
+        timestamp(b.startTime) < timestamp(value.endTime) &&
+        timestamp(b.endTime) > timestamp(value.startTime),
+    ).length;
 
-  if (concurrentCount >= 1) {
-    return { ok: false, reason: '该成员在此时间段已占用 1 个账号' };
+    if (concurrentCount >= 1) {
+      return { ok: false, reason: '该成员在此时间段已占用 1 个账号' };
+    }
   }
 
   return { ok: true, value };
@@ -506,6 +509,11 @@ function containsTime(startTime: string, endTime: string, time: Date): boolean {
 
 function timestamp(value: string): number {
   return new Date(value).getTime();
+}
+
+function isBossGroup(groupId: string, groups: Group[]): boolean {
+  const groupName = groups.find((group) => group.id === groupId)?.name.replace(/\s/g, '').toLowerCase();
+  return groupName === 'boss' || groupName === 'boss组' || groupName === 'boss小组';
 }
 
 function daysUntil(dateValue: string, now: Date): number {

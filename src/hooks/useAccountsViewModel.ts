@@ -217,6 +217,7 @@ export function useAccountsViewModel() {
     const runtime = getAccountRuntime(useNowForm.accountId, bookings, now);
     const validation = validateBookingDraft(draft, {
       bookings,
+      groups,
       mode: 'use_now',
       now,
       nextBooking: runtime.next,
@@ -255,6 +256,7 @@ export function useAccountsViewModel() {
     };
     const validation = validateBookingDraft(draft, {
       bookings,
+      groups,
       mode: 'reserve',
       now,
     });

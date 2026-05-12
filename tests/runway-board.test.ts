@@ -45,11 +45,13 @@ const accounts: Account[] = [
 const groups: Group[] = [
   { id: 'group-a', name: 'A组' },
   { id: 'group-b', name: 'B组' },
+  { id: 'group-boss', name: 'Boss小组' },
 ];
 
 const users: User[] = [
   { id: 'user-1', name: '小王', email: 'wang@example.com', groupId: 'group-a' },
   { id: 'user-2', name: '小林', email: 'lin@example.com', groupId: 'group-b' },
+  { id: 'user-boss', name: '老板', email: 'boss@example.com', groupId: 'group-boss' },
 ];
 
 const booking = (partial: Partial<Booking>): Booking => ({
@@ -195,6 +197,7 @@ describe('validateBookingDraft', () => {
         bookings: [booking({})],
         mode: 'reserve',
         now,
+        groups,
       },
     );
 
@@ -202,6 +205,45 @@ describe('validateBookingDraft', () => {
     if (!result.ok) {
       expect(result.reason).toContain('1 个账号');
     }
+  });
+
+  it('allows Boss group members to hold any number of accounts at the same time', () => {
+    const result = validateBookingDraft(
+      {
+        accountId: 'account-2',
+        userId: 'user-boss',
+        groupId: 'group-boss',
+        projectName: '重点项目',
+        startTime: '2026-05-09T09:30:00.000Z',
+        endTime: '2026-05-09T12:00:00.000Z',
+      },
+      {
+        bookings: [
+          booking({
+            accountId: 'account-1',
+            userId: 'user-boss',
+            groupId: 'group-boss',
+          }),
+          booking({
+            id: 'booking-2',
+            accountId: 'account-3',
+            userId: 'user-boss',
+            groupId: 'group-boss',
+          }),
+          booking({
+            id: 'booking-3',
+            accountId: 'account-4',
+            userId: 'user-boss',
+            groupId: 'group-boss',
+          }),
+        ],
+        mode: 'reserve',
+        now,
+        groups,
+      },
+    );
+
+    expect(result.ok).toBe(true);
   });
 });
 
