@@ -308,6 +308,15 @@ export function getActiveUsers(users: User[]): User[] {
   return users.filter((user) => user.isActive !== false);
 }
 
+export function resolveCurrentUser(savedUserId: string, activeUsers: User[], fallbackUser: User): { user: User; shouldPersist: boolean } {
+  const savedUser = activeUsers.find((user) => user.id === savedUserId);
+  if (savedUser) {
+    return { user: savedUser, shouldPersist: false };
+  }
+
+  return { user: fallbackUser, shouldPersist: savedUserId !== fallbackUser.id };
+}
+
 export function getActiveGroups(groups: Group[], users: User[]): Group[] {
   const activeGroupIds = new Set(getActiveUsers(users).map((user) => user.groupId));
   return groups.filter((group) => group.isActive !== false || activeGroupIds.has(group.id));

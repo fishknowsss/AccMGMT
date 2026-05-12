@@ -10,6 +10,7 @@ import {
   getNextAccountLabel,
   canManageFutureBooking,
   parseMemberImportNames,
+  resolveCurrentUser,
   selectAvailableAccounts,
   validateGroupDeletion,
   validateGroupDraft,
@@ -491,6 +492,22 @@ describe('member and group editing rules', () => {
     expect(validateGroupDeletion('group-a', users, [])).toEqual({ ok: true, value: 'group-a' });
     // default booking fixture spans 09:00–11:00, now=10:00 → currently active → should block
     expect(validateGroupDeletion('group-c', [], [booking({ groupId: 'group-c' })])).toEqual({ ok: false, reason: '这个小组当前有账号使用中，暂时无法删除' });
+  });
+});
+
+describe('resolveCurrentUser', () => {
+  it('keeps a saved active member instead of falling back to the default member after refresh', () => {
+    const resolved = resolveCurrentUser('user-2', users, users[0]);
+
+    expect(resolved.user.id).toBe('user-2');
+    expect(resolved.shouldPersist).toBe(false);
+  });
+
+  it('falls back to the default member when the saved member is no longer active', () => {
+    const resolved = resolveCurrentUser('user-missing', users, users[0]);
+
+    expect(resolved.user.id).toBe('user-1');
+    expect(resolved.shouldPersist).toBe(true);
   });
 });
 

@@ -10,6 +10,7 @@ import {
   getActiveUsers,
   getNextAccountLabel,
   parseMemberImportNames,
+  resolveCurrentUser,
   roundToNextFiveMinutes,
   selectAvailableAccounts,
   toLocalInputValue,
@@ -171,17 +172,21 @@ export function useAccountsViewModel() {
   const activeGroups = useMemo(() => getActiveGroups(groups, users), [groups, users]);
 
   const defaultUser = useMemo(() => {
-    return activeUsers.find((user) => user.id === currentUserId) ?? activeUsers.find((user) => user.id === snapshot.defaultUser.id) ?? activeUsers[0] ?? users[0] ?? snapshot.defaultUser;
+    const fallbackUser = activeUsers.find((user) => user.id === snapshot.defaultUser.id) ?? activeUsers[0] ?? users[0] ?? snapshot.defaultUser;
+    return resolveCurrentUser(currentUserId, activeUsers, fallbackUser).user;
   }, [activeUsers, currentUserId, snapshot.defaultUser, users]);
 
   useEffect(() => {
-    if (!defaultUser.id || currentUserId === defaultUser.id) {
+    if (!defaultUser.id || currentUserId === defaultUser.id || activeUsers.length === 0) {
       return;
     }
 
-    setCurrentUserIdState(defaultUser.id);
-    saveCurrentUserId(defaultUser.id);
-  }, [currentUserId, defaultUser]);
+    const resolved = resolveCurrentUser(currentUserId, activeUsers, defaultUser);
+    if (resolved.shouldPersist) {
+      setCurrentUserIdState(resolved.user.id);
+      saveCurrentUserId(resolved.user.id);
+    }
+  }, [activeUsers, currentUserId, defaultUser]);
 
   const view = useMemo(
     () =>
