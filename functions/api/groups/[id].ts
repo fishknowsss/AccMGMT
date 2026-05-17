@@ -24,16 +24,26 @@ export const onRequestDelete: PagesFunction<Env> = async ({ env, params }) => {
 
 function normalizeGroupInput(
   body: unknown,
-): { ok: true; value: { name: string; isActive: boolean } } | { ok: false; reason: string } {
+): { ok: true; value: { name: string; concurrentLimit: number; isActive: boolean } } | { ok: false; reason: string } {
   if (!body || typeof body !== 'object') {
     return { ok: false, reason: '请填写小组信息' };
   }
 
   const data = body as Record<string, unknown>;
   const name = typeof data.name === 'string' ? data.name.trim() : '';
+  const concurrentLimit = normalizeConcurrentLimit(data.concurrentLimit);
   const isActive = typeof data.isActive === 'boolean' ? data.isActive : true;
 
   if (!name) return { ok: false, reason: '请填写小组名称' };
 
-  return { ok: true, value: { name, isActive } };
+  return { ok: true, value: { name, concurrentLimit, isActive } };
+}
+
+function normalizeConcurrentLimit(value: unknown): number {
+  const numberValue = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(numberValue)) {
+    return 2;
+  }
+
+  return Math.max(1, Math.floor(numberValue));
 }

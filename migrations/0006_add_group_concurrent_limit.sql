@@ -1,0 +1,1 @@
+ALTER TABLE groups ADD COLUMN concurrent_limit INTEGER NOT NULL DEFAULT 2;

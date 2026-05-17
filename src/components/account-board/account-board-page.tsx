@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAccountsViewModel, type AccountDraftState } from '../../hooks/useAccountsViewModel';
 import { boardSections, getBoardSectionMeta, type BoardSection } from '../../lib/board-navigation';
 import { advanceDeveloperSequence, advanceDeveloperTapCount, canUseDeveloperShortcut, normalizeDeveloperKey } from '../../lib/developer-mode';
-import { type Account, type Group, type User } from '../../lib/runway-board';
+import { defaultGroupConcurrentLimit, getGroupConcurrentLimit, type Account, type Group, type User } from '../../lib/runway-board';
 import { cn } from '../../lib/utils';
 import { AccountFilters } from './account-filters';
 import { AccountTable } from './account-table';
@@ -23,7 +23,7 @@ const sectionIcons = {
 const primarySections = boardSections.filter((section) => section.id !== 'accounts');
 const settingsSection = boardSections.find((section) => section.id === 'accounts') ?? boardSections[1];
 export const groupEditorListClassName = 'grid max-h-[280px] divide-y divide-[#EEF2F6] overflow-y-auto';
-export const groupEditorRowClassName = 'grid min-h-[68px] gap-3 px-5 py-3 sm:grid-cols-[1fr_110px_40px] sm:items-center';
+export const groupEditorRowClassName = 'grid min-h-[68px] gap-3 px-5 py-3 sm:grid-cols-[1fr_104px_90px_40px] sm:items-center';
 export const memberEditorListClassName = 'grid max-h-[360px] divide-y divide-[#EEF2F6] overflow-y-scroll [scrollbar-gutter:stable]';
 export const memberEditorRowClassName = 'grid min-h-[68px] items-center gap-x-3 gap-y-2 px-5 py-3 sm:grid-cols-[minmax(0,1fr)_160px_80px_40px]';
 
@@ -523,8 +523,10 @@ function GroupSummaryRow({ group, model }: { group: Group; model: BoardModel }) 
   const activeBookings = model.view.allRows.filter((row) => row.current?.groupId === group.id);
   const nextBookings = model.view.allRows.filter((row) => row.next?.groupId === group.id);
 
+  const concurrentLimit = getGroupConcurrentLimit(group.id, model.groups);
+
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_64px_72px_72px] items-center gap-4 px-5 py-3">
+    <div className="grid grid-cols-[minmax(0,1fr)_64px_72px_72px_72px] items-center gap-4 px-5 py-3">
       <div className="grid min-w-0 grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-3 gap-y-1">
         <span className="whitespace-nowrap font-medium leading-6 text-[#171A1F]">{group.name}</span>
         {members.length ? (
@@ -534,6 +536,7 @@ function GroupSummaryRow({ group, model }: { group: Group; model: BoardModel }) 
         )}
       </div>
       <span className="text-right font-mono text-sm tabular-nums text-[#667085]">{members.length} 人</span>
+      <span className="text-right font-mono text-sm tabular-nums text-[#667085]">{Number.isFinite(concurrentLimit) ? `${concurrentLimit} 个` : '不限'}</span>
       <span className="text-right font-mono text-sm tabular-nums text-[#667085]">占用 {activeBookings.length}</span>
       <span className="text-right font-mono text-sm tabular-nums text-[#667085]">预约 {nextBookings.length}</span>
     </div>
@@ -541,7 +544,7 @@ function GroupSummaryRow({ group, model }: { group: Group; model: BoardModel }) 
 }
 
 function GroupEditorSection({ model }: { model: BoardModel }) {
-  const [draft, setDraft] = useState({ name: '', isActive: true });
+  const [draft, setDraft] = useState({ name: '', concurrentLimit: defaultGroupConcurrentLimit, isActive: true });
   const [error, setError] = useState('');
 
   async function handleCreate() {
@@ -550,7 +553,7 @@ function GroupEditorSection({ model }: { model: BoardModel }) {
       setError(result.reason);
       return;
     }
-    setDraft({ name: '', isActive: true });
+    setDraft({ name: '', concurrentLimit: defaultGroupConcurrentLimit, isActive: true });
     setError('');
   }
 
@@ -561,9 +564,17 @@ function GroupEditorSection({ model }: { model: BoardModel }) {
         <span className="font-mono text-sm tabular-nums text-[#667085]">{model.groups.length} 个小组</span>
       </div>
       <div className="grid shrink-0 gap-3 border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-4">
-        <div className="grid gap-3 sm:grid-cols-[1fr_100px]">
+        <div className="grid gap-3 sm:grid-cols-[1fr_120px_100px]">
           <Field label="小组名称">
             <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+          </Field>
+          <Field label="同时使用">
+            <Input
+              min={1}
+              onChange={(event) => setDraft({ ...draft, concurrentLimit: Number(event.target.value) })}
+              type="number"
+              value={draft.concurrentLimit}
+            />
           </Field>
           <Button className="self-end" onClick={handleCreate} type="button" variant="primary">
             新增
@@ -581,11 +592,12 @@ function GroupEditorSection({ model }: { model: BoardModel }) {
 }
 
 function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: BoardModel['deleteGroup']; onSave: BoardModel['updateGroup'] }) {
-  const [draft, setDraft] = useState({ name: group.name, isActive: group.isActive !== false });
+  const isBoss = !Number.isFinite(getGroupConcurrentLimit(group.id, [group]));
+  const [draft, setDraft] = useState({ name: group.name, concurrentLimit: group.concurrentLimit ?? defaultGroupConcurrentLimit, isActive: group.isActive !== false });
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setDraft({ name: group.name, isActive: group.isActive !== false });
+    setDraft({ name: group.name, concurrentLimit: group.concurrentLimit ?? defaultGroupConcurrentLimit, isActive: group.isActive !== false });
     setError('');
   }, [group]);
 
@@ -602,6 +614,14 @@ function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: Boar
   return (
     <article className={groupEditorRowClassName}>
       <Input value={draft.name} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+      <Input
+        disabled={isBoss}
+        min={1}
+        onBlur={handleSave}
+        onChange={(event) => setDraft({ ...draft, concurrentLimit: Number(event.target.value) })}
+        type="number"
+        value={isBoss ? '' : draft.concurrentLimit}
+      />
       <label className="flex items-center gap-2 text-sm font-medium text-[#344154]">
         <input
           checked={draft.isActive}
@@ -619,7 +639,7 @@ function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: Boar
       <Button aria-label="删除小组" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={handleDelete} size="icon" type="button" variant="ghost">
         <Trash2 size={16} />
       </Button>
-      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] sm:col-span-3">{error}</div> : null}
+      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] sm:col-span-4">{error}</div> : null}
     </article>
   );
 }

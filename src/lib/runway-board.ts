@@ -18,6 +18,7 @@ export type User = {
 export type Group = {
   id: string;
   name: string;
+  concurrentLimit?: number;
   isActive?: boolean;
 };
 
@@ -114,8 +115,11 @@ export type UserDraft = {
 
 export type GroupDraft = {
   name: string;
+  concurrentLimit?: number;
   isActive?: boolean;
 };
+
+export const defaultGroupConcurrentLimit = 2;
 
 export const emptyFilters: AccountFiltersState = {
   query: '',
@@ -205,18 +209,19 @@ export function validateBookingDraft(draft: BookingDraft, context: BookingValida
     return { ok: false, reason: '该时间段与已有预约冲突', conflict };
   }
 
-  if (!isBossGroup(value.groupId, context.groups ?? [])) {
+  const groupLimit = getGroupConcurrentLimit(value.groupId, context.groups ?? []);
+  if (Number.isFinite(groupLimit)) {
     const concurrentCount = context.bookings.filter(
       (b) =>
-        b.userId === value.userId &&
+        b.groupId === value.groupId &&
         b.id !== context.editingBookingId &&
         b.status === 'confirmed' &&
         timestamp(b.startTime) < timestamp(value.endTime) &&
         timestamp(b.endTime) > timestamp(value.startTime),
     ).length;
 
-    if (concurrentCount >= 1) {
-      return { ok: false, reason: '该成员在此时间段已占用 1 个账号' };
+    if (concurrentCount >= groupLimit) {
+      return { ok: false, reason: `该小组在此时间段最多可使用 ${groupLimit} 个账号` };
     }
   }
 
@@ -226,6 +231,7 @@ export function validateBookingDraft(draft: BookingDraft, context: BookingValida
 export function validateGroupDraft(draft: GroupDraft, groups: Group[], editingGroupId?: string): ValidationResult<Required<GroupDraft>> {
   const value = {
     name: draft.name.trim(),
+    concurrentLimit: normalizeConcurrentLimit(draft.concurrentLimit),
     isActive: draft.isActive ?? true,
   };
 
@@ -537,6 +543,23 @@ function timestamp(value: string): number {
 function isBossGroup(groupId: string, groups: Group[]): boolean {
   const groupName = groups.find((group) => group.id === groupId)?.name.replace(/\s/g, '').toLowerCase();
   return groupName === 'boss' || groupName === 'boss组' || groupName === 'boss小组';
+}
+
+export function getGroupConcurrentLimit(groupId: string, groups: Group[]): number {
+  if (isBossGroup(groupId, groups)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const limit = groups.find((group) => group.id === groupId)?.concurrentLimit;
+  return normalizeConcurrentLimit(limit);
+}
+
+function normalizeConcurrentLimit(value: number | undefined): number {
+  if (value === undefined || !Number.isFinite(value)) {
+    return defaultGroupConcurrentLimit;
+  }
+
+  return Math.max(1, Math.floor(value));
 }
 
 function daysUntil(dateValue: string, now: Date): number {

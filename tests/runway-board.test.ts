@@ -45,9 +45,9 @@ const accounts: Account[] = [
 ];
 
 const groups: Group[] = [
-  { id: 'group-a', name: 'A组' },
-  { id: 'group-b', name: 'B组' },
-  { id: 'group-boss', name: 'Boss小组' },
+  { id: 'group-a', name: 'A组', concurrentLimit: 2 },
+  { id: 'group-b', name: 'B组', concurrentLimit: 2 },
+  { id: 'group-boss', name: 'Boss小组', concurrentLimit: 2 },
 ];
 
 const users: User[] = [
@@ -185,7 +185,31 @@ describe('validateBookingDraft', () => {
       expect(result.reason).toContain('下一预约');
     }
   });
-  it('blocks a second concurrent account booking for the same user', () => {
+  it('blocks bookings after a group reaches its concurrent account limit', () => {
+    const result = validateBookingDraft(
+      {
+        accountId: 'account-3',
+        userId: 'user-1',
+        groupId: 'group-a',
+        projectName: '广告片',
+        startTime: '2026-05-09T09:30:00.000Z',
+        endTime: '2026-05-09T12:00:00.000Z',
+      },
+      {
+        bookings: [booking({}), booking({ id: 'booking-2', accountId: 'account-2', userId: 'user-2' })],
+        mode: 'reserve',
+        now,
+        groups,
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toContain('最多可使用 2 个账号');
+    }
+  });
+
+  it('allows a group to use two accounts at the same time by default', () => {
     const result = validateBookingDraft(
       {
         accountId: 'account-2',
@@ -203,10 +227,7 @@ describe('validateBookingDraft', () => {
       },
     );
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toContain('1 个账号');
-    }
+    expect(result.ok).toBe(true);
   });
 
   it('allows Boss group members to hold any number of accounts at the same time', () => {
@@ -413,7 +434,7 @@ describe('getNextAccountLabel', () => {
 
 describe('member and group editing rules', () => {
   it('validates a new group name and rejects duplicates', () => {
-    expect(validateGroupDraft({ name: ' D组 ' }, groups)).toEqual({ ok: true, value: { name: 'D组', isActive: true } });
+    expect(validateGroupDraft({ name: ' D组 ' }, groups)).toEqual({ ok: true, value: { name: 'D组', concurrentLimit: 2, isActive: true } });
     expect(validateGroupDraft({ name: 'A组' }, groups)).toEqual({ ok: false, reason: '这个小组已经存在' });
   });
 

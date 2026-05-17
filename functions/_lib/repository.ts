@@ -33,6 +33,7 @@ type UserRow = {
 type GroupRow = {
   id: string;
   name: string;
+  concurrent_limit: number;
   sort_order: number;
   is_active: number;
 };
@@ -50,8 +51,8 @@ export type D1Repository = {
   updateUser(id: string, input: { name: string; email: string | null; groupId: string; isActive: boolean }): Promise<User | null>;
   deleteUser(id: string): Promise<boolean>;
   listGroups(): Promise<Group[]>;
-  createGroup(input: { name: string; isActive: boolean }): Promise<Group>;
-  updateGroup(id: string, input: { name: string; isActive: boolean }): Promise<Group | null>;
+  createGroup(input: { name: string; concurrentLimit: number; isActive: boolean }): Promise<Group>;
+  updateGroup(id: string, input: { name: string; concurrentLimit: number; isActive: boolean }): Promise<Group | null>;
   deleteGroup(id: string): Promise<boolean>;
   renameProject(oldName: string, newName: string): Promise<number>;
   deleteProject(name: string): Promise<number>;
@@ -70,7 +71,7 @@ export function createRepository(db: D1Database): D1Repository {
           )
           .all<BookingRow>(),
         db.prepare('SELECT id, name, email, group_id, is_active FROM users ORDER BY name ASC').all<UserRow>(),
-        db.prepare('SELECT id, name, sort_order, is_active FROM groups ORDER BY sort_order ASC, name ASC').all<GroupRow>(),
+        db.prepare('SELECT id, name, concurrent_limit, sort_order, is_active FROM groups ORDER BY sort_order ASC, name ASC').all<GroupRow>(),
       ]);
 
       return {
@@ -230,7 +231,7 @@ export function createRepository(db: D1Database): D1Repository {
     },
 
     async listGroups() {
-      const result = await db.prepare('SELECT id, name, sort_order, is_active FROM groups ORDER BY sort_order ASC, name ASC').all<GroupRow>();
+      const result = await db.prepare('SELECT id, name, concurrent_limit, sort_order, is_active FROM groups ORDER BY sort_order ASC, name ASC').all<GroupRow>();
       return result.results.map(mapGroup);
     },
 
@@ -239,20 +240,20 @@ export function createRepository(db: D1Database): D1Repository {
       const maxOrderRow = await db.prepare('SELECT MAX(sort_order) AS max_order FROM groups').first<{ max_order: number | null }>();
       const sortOrder = (maxOrderRow?.max_order ?? 0) + 1;
       await db
-        .prepare('INSERT INTO groups (id, name, sort_order, is_active) VALUES (?1, ?2, ?3, ?4)')
-        .bind(id, input.name, sortOrder, input.isActive ? 1 : 0)
+        .prepare('INSERT INTO groups (id, name, concurrent_limit, sort_order, is_active) VALUES (?1, ?2, ?3, ?4, ?5)')
+        .bind(id, input.name, input.concurrentLimit, sortOrder, input.isActive ? 1 : 0)
         .run();
-      const row = await db.prepare('SELECT id, name, sort_order, is_active FROM groups WHERE id = ?1').bind(id).first<GroupRow>();
+      const row = await db.prepare('SELECT id, name, concurrent_limit, sort_order, is_active FROM groups WHERE id = ?1').bind(id).first<GroupRow>();
       if (!row) throw new Error('GROUP_CREATE_FAILED');
       return mapGroup(row);
     },
 
     async updateGroup(id, input) {
       await db
-        .prepare('UPDATE groups SET name = ?1, is_active = ?2 WHERE id = ?3')
-        .bind(input.name, input.isActive ? 1 : 0, id)
+        .prepare('UPDATE groups SET name = ?1, concurrent_limit = ?2, is_active = ?3 WHERE id = ?4')
+        .bind(input.name, input.concurrentLimit, input.isActive ? 1 : 0, id)
         .run();
-      const row = await db.prepare('SELECT id, name, sort_order, is_active FROM groups WHERE id = ?1').bind(id).first<GroupRow>();
+      const row = await db.prepare('SELECT id, name, concurrent_limit, sort_order, is_active FROM groups WHERE id = ?1').bind(id).first<GroupRow>();
       return row ? mapGroup(row) : null;
     },
 
@@ -341,6 +342,7 @@ function mapGroup(row: GroupRow): Group {
   return {
     id: row.id,
     name: row.name,
+    concurrentLimit: row.concurrent_limit,
     isActive: Boolean(row.is_active),
   };
 }

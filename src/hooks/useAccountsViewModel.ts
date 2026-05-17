@@ -89,7 +89,7 @@ export function useAccountsViewModel() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [groups, setGroups] = useState<Array<{ id: string; name: string; isActive?: boolean }>>([]);
+  const [groups, setGroups] = useState<Array<{ id: string; name: string; concurrentLimit?: number; isActive?: boolean }>>([]);
   const [filters, setFilters] = useState<AccountFiltersState>(emptyFilters);
   const [now, setNow] = useState(() => new Date());
 
@@ -521,7 +521,7 @@ export function useAccountsViewModel() {
 
     try {
       const cloudGroup = await createCloudGroup(validation.value);
-      setGroups((current) => [...current, { id: cloudGroup.id, name: cloudGroup.name, isActive: cloudGroup.isActive }]);
+      setGroups((current) => [...current, { id: cloudGroup.id, name: cloudGroup.name, concurrentLimit: cloudGroup.concurrentLimit, isActive: cloudGroup.isActive }]);
       setToast('小组已新增。');
       return { ok: true };
     } catch (error) {
@@ -537,7 +537,11 @@ export function useAccountsViewModel() {
 
     try {
       const cloudGroup = await updateCloudGroup(groupId, validation.value);
-      setGroups((current) => current.map((g) => (g.id === groupId ? { ...g, name: cloudGroup.name, isActive: cloudGroup.isActive } : g)));
+      setGroups((current) =>
+        current.map((g) =>
+          g.id === groupId ? { ...g, name: cloudGroup.name, concurrentLimit: cloudGroup.concurrentLimit, isActive: cloudGroup.isActive } : g,
+        ),
+      );
       setToast('小组已更新。');
       return { ok: true };
     } catch (error) {

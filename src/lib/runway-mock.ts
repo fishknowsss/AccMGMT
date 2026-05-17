@@ -17,10 +17,10 @@ export type MockSnapshot = {
 
 export function createMockSnapshot(now = new Date()): MockSnapshot {
   const groups: Group[] = [
-    { id: 'group-a', name: 'A组' },
-    { id: 'group-b', name: 'B组' },
-    { id: 'group-c', name: 'C组' },
-    { id: 'group-design', name: '设计组' },
+    { id: 'group-a', name: 'A组', concurrentLimit: 2 },
+    { id: 'group-b', name: 'B组', concurrentLimit: 2 },
+    { id: 'group-c', name: 'C组', concurrentLimit: 2 },
+    { id: 'group-design', name: '设计组', concurrentLimit: 2 },
   ];
 
   const users: User[] = [

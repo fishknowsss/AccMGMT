@@ -33,6 +33,7 @@ export type CloudUser = {
 export type CloudGroup = {
   id: string;
   name: string;
+  concurrentLimit?: number;
   isActive?: boolean;
 };
 
@@ -71,7 +72,7 @@ export type BookingWritePayload = {
 
 export function mapCloudSnapshot(snapshot: CloudSnapshot): BoardSnapshot {
   const users: User[] = snapshot.users.map(mapCloudUser);
-  const groups: Group[] = snapshot.groups.map((g) => ({ id: g.id, name: g.name, isActive: g.isActive ?? true }));
+  const groups: Group[] = snapshot.groups.map((g) => ({ id: g.id, name: g.name, concurrentLimit: g.concurrentLimit, isActive: g.isActive ?? true }));
 
   // 不从 booking 文本字段合成虚拟小组/成员——
   // 合成对象只存在于本地状态，D1 没有对应记录，
@@ -124,7 +125,7 @@ export async function getCloudSnapshot(baseSnapshot: BoardSnapshot): Promise<Boa
     accounts: data.accounts,
     bookings: data.bookings,
     users: data.users ?? baseSnapshot.users.map((u) => ({ id: u.id, name: u.name, email: u.email ?? null, groupId: u.groupId })),
-    groups: data.groups ?? baseSnapshot.groups.map((g) => ({ id: g.id, name: g.name })),
+    groups: data.groups ?? baseSnapshot.groups.map((g) => ({ id: g.id, name: g.name, concurrentLimit: g.concurrentLimit })),
     defaultUser: baseSnapshot.defaultUser,
   });
 }
@@ -204,7 +205,7 @@ export async function deleteCloudUser(userId: string): Promise<void> {
   }
 }
 
-export async function createCloudGroup(payload: { name: string; isActive: boolean }): Promise<CloudGroup> {
+export async function createCloudGroup(payload: { name: string; concurrentLimit: number; isActive: boolean }): Promise<CloudGroup> {
   const response = await fetch('/api/groups', {
     method: 'POST',
     headers: writeHeaders(),
@@ -213,7 +214,7 @@ export async function createCloudGroup(payload: { name: string; isActive: boolea
   return readSingleEntity<CloudGroup>(response, 'group');
 }
 
-export async function updateCloudGroup(groupId: string, payload: { name: string; isActive: boolean }): Promise<CloudGroup> {
+export async function updateCloudGroup(groupId: string, payload: { name: string; concurrentLimit: number; isActive: boolean }): Promise<CloudGroup> {
   const response = await fetch(`/api/groups/${groupId}`, {
     method: 'PATCH',
     headers: writeHeaders(),

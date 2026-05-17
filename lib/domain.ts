@@ -9,6 +9,7 @@ export type User = {
 export type Group = {
   id: string;
   name: string;
+  concurrentLimit: number;
   isActive: boolean;
 };
 
