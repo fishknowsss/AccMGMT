@@ -13,6 +13,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const booking = await createRepository(env.DB).createBooking(input.value);
     return json({ booking }, { status: 201 });
   } catch (error) {
+    if (isGroupLimitError(error)) {
+      return json({ message: '该小组在此时间段最多可使用 2 个账号' }, { status: 409 });
+    }
     if (isConflictError(error)) {
       return json({ message: '该时段已被占用' }, { status: 409 });
     }
@@ -39,4 +42,8 @@ function stringValue(value: unknown): string {
 
 function isConflictError(error: unknown): boolean {
   return error instanceof Error && error.message.includes('BOOKING_CONFLICT');
+}
+
+function isGroupLimitError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('GROUP_CONCURRENT_LIMIT');
 }

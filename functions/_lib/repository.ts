@@ -123,6 +123,8 @@ export function createRepository(db: D1Database): D1Repository {
         throw new Error('BOOKING_CONFLICT');
       }
 
+      await assertGroupConcurrentLimit(db, input);
+
       const id = crypto.randomUUID();
       await db
         .prepare(
@@ -157,6 +159,8 @@ export function createRepository(db: D1Database): D1Repository {
       if (conflict) {
         throw new Error('BOOKING_CONFLICT');
       }
+
+      await assertGroupConcurrentLimit(db, input, id);
 
       const result = await db
         .prepare(
@@ -349,4 +353,61 @@ function mapGroup(row: GroupRow): Group {
 
 function getChangedRows(result: D1Result): number {
   return (result.meta as { changes?: number }).changes ?? 0;
+}
+
+async function assertGroupConcurrentLimit(db: D1Database, input: BookingDraft, ignoredBookingId?: string): Promise<void> {
+  if (isBossGroupName(input.groupName)) {
+    return;
+  }
+
+  const limit = await getGroupConcurrentLimit(db, input.groupName);
+  const concurrent = await countOverlappingGroupBookings(db, input, ignoredBookingId);
+
+  if (concurrent >= limit) {
+    throw new Error('GROUP_CONCURRENT_LIMIT');
+  }
+}
+
+async function getGroupConcurrentLimit(db: D1Database, groupName: string): Promise<number> {
+  const row = await db
+    .prepare('SELECT concurrent_limit FROM groups WHERE name = ?1 LIMIT 1')
+    .bind(groupName)
+    .first<{ concurrent_limit: number | null }>();
+
+  const limit = row?.concurrent_limit;
+  return typeof limit === 'number' && Number.isFinite(limit) && limit > 0 ? limit : 2;
+}
+
+async function countOverlappingGroupBookings(db: D1Database, input: BookingDraft, ignoredBookingId?: string): Promise<number> {
+  const row = ignoredBookingId
+    ? await db
+        .prepare(
+          `SELECT COUNT(*) AS count
+           FROM bookings
+           WHERE id != ?1
+             AND group_name = ?2
+             AND released_at IS NULL
+             AND start_at < ?4
+             AND ?3 < end_at`,
+        )
+        .bind(ignoredBookingId, input.groupName, input.startAt, input.endAt)
+        .first<{ count: number }>()
+    : await db
+        .prepare(
+          `SELECT COUNT(*) AS count
+           FROM bookings
+           WHERE group_name = ?1
+             AND released_at IS NULL
+             AND start_at < ?3
+             AND ?2 < end_at`,
+        )
+        .bind(input.groupName, input.startAt, input.endAt)
+        .first<{ count: number }>();
+
+  return row?.count ?? 0;
+}
+
+function isBossGroupName(groupName: string): boolean {
+  const normalized = groupName.replace(/\s/g, '').toLowerCase();
+  return normalized === 'boss' || normalized === 'boss组' || normalized === 'boss小组';
 }
