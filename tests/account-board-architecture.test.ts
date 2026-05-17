@@ -10,11 +10,12 @@ const accountBoardSource = readFileSync(
 );
 
 describe('account board architecture', () => {
-  it('keeps edit mode scoped to account information only', () => {
-    expect(accountBoardSource).not.toContain('function GroupEditorSection');
-    expect(accountBoardSource).not.toContain('function MemberEditorSection');
-    expect(accountBoardSource).not.toContain('function GroupEditor(');
-    expect(accountBoardSource).not.toContain('function MemberEditor(');
+  it('keeps member and group editors available inside edit mode', () => {
+    expect(accountBoardSource).toContain('<MemberGroupsPanel developerMode={developerMode} model={model} />');
+    expect(accountBoardSource).toContain('function GroupEditorSection');
+    expect(accountBoardSource).toContain('function MemberEditorSection');
+    expect(accountBoardSource).toContain('function GroupEditor(');
+    expect(accountBoardSource).toContain('function MemberEditor(');
     expect(accountBoardSource).not.toContain('编辑项目');
     expect(accountBoardSource).not.toContain('删除项目');
   });

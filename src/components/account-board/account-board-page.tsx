@@ -1,4 +1,4 @@
-import { LayoutDashboard, Settings, UsersRound, FolderOpen } from 'lucide-react';
+import { LayoutDashboard, Settings, Trash2, UsersRound, FolderOpen } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAccountsViewModel, type AccountDraftState } from '../../hooks/useAccountsViewModel';
 import { boardSections, getBoardSectionMeta, type BoardSection } from '../../lib/board-navigation';
@@ -22,6 +22,10 @@ const sectionIcons = {
 
 const primarySections = boardSections.filter((section) => section.id !== 'accounts');
 const settingsSection = boardSections.find((section) => section.id === 'accounts') ?? boardSections[1];
+export const groupEditorListClassName = 'grid max-h-[280px] divide-y divide-[#EEF2F6] overflow-y-auto';
+export const groupEditorRowClassName = 'grid min-h-[68px] gap-3 px-5 py-3 sm:grid-cols-[1fr_110px_40px] sm:items-center';
+export const memberEditorListClassName = 'grid max-h-[360px] divide-y divide-[#EEF2F6] overflow-y-scroll [scrollbar-gutter:stable]';
+export const memberEditorRowClassName = 'grid min-h-[68px] items-center gap-x-3 gap-y-2 px-5 py-3 sm:grid-cols-[minmax(0,1fr)_160px_80px_40px]';
 
 export function AccountBoardPage() {
   const model = useAccountsViewModel();
@@ -168,7 +172,7 @@ export function AccountBoardPage() {
             />
           ) : null}
           {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} onDeveloperTap={handleDeveloperTap} /> : null}
-          {activeSection === 'groups' ? <MemberGroupsPanel model={model} /> : null}
+          {activeSection === 'groups' ? <MemberGroupsPanel developerMode={developerMode} model={model} /> : null}
           {activeSection === 'projects' ? <ProjectsPanel model={model} /> : null}
         </main>
       </div>
@@ -489,7 +493,7 @@ function saveAccountDraft(account: Account, draft: AccountDraftState, onSave: Bo
   void onSave(account.id, draft);
 }
 
-function MemberGroupsPanel({ model }: { model: BoardModel }) {
+function MemberGroupsPanel({ developerMode, model }: { developerMode: boolean; model: BoardModel }) {
   return (
     <div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:overflow-hidden">
       <section className="shrink-0 overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
@@ -503,6 +507,13 @@ function MemberGroupsPanel({ model }: { model: BoardModel }) {
           ))}
         </div>
       </section>
+
+      {developerMode ? (
+        <section className="grid gap-4 lg:min-h-0 lg:flex-1 xl:grid-cols-[minmax(320px,0.8fr)_minmax(520px,1.2fr)]">
+          <GroupEditorSection model={model} />
+          <MemberEditorSection model={model} />
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -526,6 +537,215 @@ function GroupSummaryRow({ group, model }: { group: Group; model: BoardModel }) 
       <span className="text-right font-mono text-sm tabular-nums text-[#667085]">占用 {activeBookings.length}</span>
       <span className="text-right font-mono text-sm tabular-nums text-[#667085]">预约 {nextBookings.length}</span>
     </div>
+  );
+}
+
+function GroupEditorSection({ model }: { model: BoardModel }) {
+  const [draft, setDraft] = useState({ name: '', isActive: true });
+  const [error, setError] = useState('');
+
+  async function handleCreate() {
+    const result = await model.createGroup(draft);
+    if (!result.ok) {
+      setError(result.reason);
+      return;
+    }
+    setDraft({ name: '', isActive: true });
+    setError('');
+  }
+
+  return (
+    <section className="flex flex-col overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)] lg:min-h-0">
+      <div className="flex items-center justify-between border-b border-[#E6EAF0] bg-[#FCFDFE] px-5 py-4">
+        <h2 className="text-base font-semibold text-[#171A1F]">小组编辑</h2>
+        <span className="font-mono text-sm tabular-nums text-[#667085]">{model.groups.length} 个小组</span>
+      </div>
+      <div className="grid shrink-0 gap-3 border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-4">
+        <div className="grid gap-3 sm:grid-cols-[1fr_100px]">
+          <Field label="小组名称">
+            <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+          </Field>
+          <Button className="self-end" onClick={handleCreate} type="button" variant="primary">
+            新增
+          </Button>
+        </div>
+        {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{error}</div> : null}
+      </div>
+      <div className={groupEditorListClassName}>
+        {model.groups.map((group) => (
+          <GroupEditor group={group} key={group.id} onDelete={model.deleteGroup} onSave={model.updateGroup} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: BoardModel['deleteGroup']; onSave: BoardModel['updateGroup'] }) {
+  const [draft, setDraft] = useState({ name: group.name, isActive: group.isActive !== false });
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setDraft({ name: group.name, isActive: group.isActive !== false });
+    setError('');
+  }, [group]);
+
+  async function handleSave() {
+    const result = await onSave(group.id, draft);
+    setError(result.ok ? '' : result.reason);
+  }
+
+  async function handleDelete() {
+    const result = await onDelete(group.id);
+    setError(result.ok ? '' : result.reason);
+  }
+
+  return (
+    <article className={groupEditorRowClassName}>
+      <Input value={draft.name} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+      <label className="flex items-center gap-2 text-sm font-medium text-[#344154]">
+        <input
+          checked={draft.isActive}
+          className="h-4 w-4 accent-[#1C2430]"
+          onChange={async (event) => {
+            const next = { ...draft, isActive: event.target.checked };
+            setDraft(next);
+            const result = await onSave(group.id, next);
+            setError(result.ok ? '' : result.reason);
+          }}
+          type="checkbox"
+        />
+        启用
+      </label>
+      <Button aria-label="删除小组" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={handleDelete} size="icon" type="button" variant="ghost">
+        <Trash2 size={16} />
+      </Button>
+      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] sm:col-span-3">{error}</div> : null}
+    </article>
+  );
+}
+
+function MemberEditorSection({ model }: { model: BoardModel }) {
+  const defaultGroupId = model.activeGroups[0]?.id ?? model.groups[0]?.id ?? '';
+  const [draft, setDraft] = useState({ name: '', groupId: defaultGroupId, isActive: true });
+  const [error, setError] = useState('');
+  const nameCount = draft.name.split(/\r?\n/).map((name) => name.trim()).filter(Boolean).length;
+
+  useEffect(() => {
+    setDraft((current) => (current.groupId ? current : { ...current, groupId: defaultGroupId }));
+  }, [defaultGroupId]);
+
+  async function handleCreate() {
+    const result = await model.createUsersFromText(draft.name, draft.groupId);
+    if (!result.ok) {
+      setError(result.reason);
+      return;
+    }
+    setDraft({ name: '', groupId: defaultGroupId, isActive: true });
+    setError('');
+  }
+
+  return (
+    <section className="flex flex-col overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)] lg:min-h-0">
+      <div className="flex items-center justify-between border-b border-[#E6EAF0] bg-[#FCFDFE] px-5 py-4">
+        <h2 className="text-base font-semibold text-[#171A1F]">成员编辑</h2>
+        <span className="font-mono text-sm tabular-nums text-[#667085]">{model.activeUsers.length} 位成员</span>
+      </div>
+      <div className="grid shrink-0 gap-3 border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-3">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px_80px]">
+          <Field label="姓名">
+            <textarea
+              className="min-h-10 max-h-[104px] w-full resize-y rounded-md border border-[#DDE1E7] bg-white px-3 py-2 text-sm leading-5 text-[#24272D] outline-none transition focus:border-[#AEB7C4] focus:ring-3 focus:ring-[#2F6BFF]/10"
+              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+              placeholder="可粘贴多行姓名"
+              rows={1}
+              value={draft.name}
+            />
+          </Field>
+          <Field label="小组">
+            <GroupSelect groups={model.activeGroups} value={draft.groupId} onChange={(groupId) => setDraft({ ...draft, groupId })} />
+          </Field>
+          <Button className="self-end" onClick={handleCreate} type="button" variant="primary">
+            {nameCount > 1 ? '导入' : '新增'}
+          </Button>
+        </div>
+        {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{error}</div> : null}
+      </div>
+      <div className={memberEditorListClassName}>
+        {model.users.map((user) => (
+          <MemberEditor groups={model.activeGroups} key={user.id} onDelete={model.deleteUser} onSave={model.updateUser} user={user} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MemberEditor({ groups, onDelete, onSave, user }: { groups: Group[]; onDelete: BoardModel['deleteUser']; onSave: BoardModel['updateUser']; user: User }) {
+  const [draft, setDraft] = useState({ name: user.name, email: user.email, groupId: user.groupId, isActive: user.isActive !== false });
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setDraft({ name: user.name, email: user.email, groupId: user.groupId, isActive: user.isActive !== false });
+    setError('');
+  }, [user]);
+
+  async function handleSave() {
+    const result = await onSave(user.id, draft);
+    setError(result.ok ? '' : result.reason);
+  }
+
+  async function handleDelete() {
+    const result = await onDelete(user.id);
+    setError(result.ok ? '' : result.reason);
+  }
+
+  return (
+    <article className={memberEditorRowClassName}>
+      <Input value={draft.name} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+      <GroupSelect
+        groups={groups}
+        value={draft.groupId}
+        onChange={async (groupId) => {
+          const next = { ...draft, groupId };
+          setDraft(next);
+          const result = await onSave(user.id, next);
+          setError(result.ok ? '' : result.reason);
+        }}
+      />
+      <label className="flex items-center gap-2 text-sm font-medium text-[#344154]">
+        <input
+          checked={draft.isActive}
+          className="h-4 w-4 accent-[#1C2430]"
+          onChange={async (event) => {
+            const next = { ...draft, isActive: event.target.checked };
+            setDraft(next);
+            const result = await onSave(user.id, next);
+            setError(result.ok ? '' : result.reason);
+          }}
+          type="checkbox"
+        />
+        启用
+      </label>
+      <Button aria-label="删除成员" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={handleDelete} size="icon" type="button" variant="ghost">
+        <Trash2 size={16} />
+      </Button>
+      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] sm:col-span-4">{error}</div> : null}
+    </article>
+  );
+}
+
+function GroupSelect({ groups, value, onChange }: { groups: Group[]; value: string; onChange: (groupId: string) => void }) {
+  return (
+    <select
+      className="h-10 w-full rounded-lg border border-[#DDE3EA] bg-white px-3 text-sm text-[#202329] outline-none transition focus:border-[#98A7B7] focus:ring-2 focus:ring-[#D7E3F6]"
+      onChange={(event) => onChange(event.target.value)}
+      value={value}
+    >
+      {groups.map((group) => (
+        <option key={group.id} value={group.id}>
+          {group.name}
+        </option>
+      ))}
+    </select>
   );
 }
 
