@@ -19,4 +19,10 @@ describe('account board architecture', () => {
     expect(accountBoardSource).not.toContain('编辑项目');
     expect(accountBoardSource).not.toContain('删除项目');
   });
+
+  it('keeps group names on one line and lets member names wrap', () => {
+    expect(accountBoardSource).toContain('whitespace-nowrap');
+    expect(accountBoardSource).toContain('break-words');
+    expect(accountBoardSource).not.toContain('truncate text-sm text-[#98A7B7]');
+  });
 });

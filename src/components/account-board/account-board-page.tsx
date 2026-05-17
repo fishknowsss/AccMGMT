@@ -524,13 +524,13 @@ function GroupSummaryRow({ group, model }: { group: Group; model: BoardModel }) 
   const nextBookings = model.view.allRows.filter((row) => row.next?.groupId === group.id);
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_60px_60px_70px] items-center gap-4 px-5 py-3">
-      <div className="flex min-w-0 items-baseline gap-2">
-        <span className="font-medium text-[#171A1F]">{group.name}</span>
+    <div className="grid grid-cols-[minmax(0,1fr)_64px_72px_72px] items-center gap-4 px-5 py-3">
+      <div className="grid min-w-0 grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-3 gap-y-1">
+        <span className="whitespace-nowrap font-medium leading-6 text-[#171A1F]">{group.name}</span>
         {members.length ? (
-          <span className="truncate text-sm text-[#98A7B7]">{members.map((m) => m.name).join('、')}</span>
+          <span className="min-w-0 whitespace-normal break-words text-sm leading-6 text-[#8191A6]">{members.map((m) => m.name).join('、')}</span>
         ) : (
-          <span className="text-sm text-[#C4CAD4]">添加成员</span>
+          <span className="text-sm leading-6 text-[#C4CAD4]">添加成员</span>
         )}
       </div>
       <span className="text-right font-mono text-sm tabular-nums text-[#667085]">{members.length} 人</span>
