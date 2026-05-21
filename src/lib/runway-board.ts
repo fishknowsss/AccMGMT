@@ -332,8 +332,12 @@ export function validateUserDeletion(userId: string, _bookings: Booking[]): Vali
   return { ok: true, value: userId };
 }
 
-export function validateGroupDeletion(groupId: string, _users: User[], bookings: Booking[]): ValidationResult<string> {
-  if (bookings.some((booking) => booking.groupId === groupId)) {
+export function validateGroupDeletion(groupId: string, _users: User[], bookings: Booking[], now = new Date()): ValidationResult<string> {
+  const hasCurrentUsage = bookings.some(
+    (booking) => booking.groupId === groupId && booking.status === 'confirmed' && containsTime(booking.startTime, booking.endTime, now),
+  );
+
+  if (hasCurrentUsage) {
     return { ok: false, reason: '这个小组当前有账号使用中，暂时无法删除' };
   }
 

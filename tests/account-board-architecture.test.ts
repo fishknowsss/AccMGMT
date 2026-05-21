@@ -25,4 +25,18 @@ describe('account board architecture', () => {
     expect(accountBoardSource).toContain('break-words');
     expect(accountBoardSource).not.toContain('truncate text-sm text-[#98A7B7]');
   });
+
+  it('uses a self-serve identity entry instead of a long member select', () => {
+    expect(accountBoardSource).toContain('function MemberIdentityEntry');
+    expect(accountBoardSource).toContain('function MemberIdentityPopover');
+    expect(accountBoardSource).toContain('我的身份');
+    expect(accountBoardSource).toContain('function IdentityGroupSection');
+    expect(accountBoardSource).toContain('function getMemberInitial');
+    expect(accountBoardSource).toContain('BOSS');
+    expect(accountBoardSource).toContain('border-[#E6B5B0]');
+    expect(accountBoardSource).toContain('bg-[#FFF1EF]');
+    expect(accountBoardSource).not.toContain('placeholder="搜索成员"');
+    expect(accountBoardSource).not.toContain('function CurrentMemberSwitcher');
+    expect(accountBoardSource).not.toContain('<Select');
+  });
 });

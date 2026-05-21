@@ -550,10 +550,7 @@ export function useAccountsViewModel() {
   }
 
   async function deleteGroup(groupId: string): Promise<{ ok: true } | { ok: false; reason: string }> {
-    const nowIso = now.toISOString();
-    // 只有当前正在使用中的 booking（已开始但未结束）才阻止删除，未来还未开始的预约不拦截
-    const activeBookings = bookings.filter((b) => b.status === 'confirmed' && b.startTime <= nowIso && b.endTime > nowIso);
-    const validation = validateGroupDeletion(groupId, users, activeBookings);
+    const validation = validateGroupDeletion(groupId, users, bookings, now);
     if (!validation.ok) {
       return { ok: false, reason: validation.reason };
     }

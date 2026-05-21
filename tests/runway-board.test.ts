@@ -508,11 +508,26 @@ describe('member and group editing rules', () => {
     expect(validateUserDeletion('user-1', [booking({})])).toEqual({ ok: true, value: 'user-1' });
   });
 
-  it('allows deleting groups freely unless a booking is currently active for that group', () => {
-    expect(validateGroupDeletion('group-empty', users, [])).toEqual({ ok: true, value: 'group-empty' });
-    expect(validateGroupDeletion('group-a', users, [])).toEqual({ ok: true, value: 'group-a' });
-    // default booking fixture spans 09:00–11:00, now=10:00 → currently active → should block
-    expect(validateGroupDeletion('group-c', [], [booking({ groupId: 'group-c' })])).toEqual({ ok: false, reason: '这个小组当前有账号使用中，暂时无法删除' });
+  it('allows deleting groups with only historical, future, or cancelled bookings', () => {
+    const result = validateGroupDeletion(
+      'group-a',
+      users,
+      [
+        booking({ id: 'past', startTime: '2026-05-09T07:00:00.000Z', endTime: '2026-05-09T08:00:00.000Z' }),
+        booking({ id: 'future', startTime: '2026-05-09T12:00:00.000Z', endTime: '2026-05-09T13:00:00.000Z' }),
+        booking({ id: 'cancelled', status: 'cancelled' }),
+      ],
+      now,
+    );
+
+    expect(result).toEqual({ ok: true, value: 'group-a' });
+  });
+
+  it('blocks deleting groups with an account currently in use', () => {
+    expect(validateGroupDeletion('group-c', [], [booking({ groupId: 'group-c' })], now)).toEqual({
+      ok: false,
+      reason: '这个小组当前有账号使用中，暂时无法删除',
+    });
   });
 });
 

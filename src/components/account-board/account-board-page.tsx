@@ -1,5 +1,5 @@
-import { LayoutDashboard, Settings, Trash2, UsersRound, FolderOpen } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Check, ChevronDown, FolderOpen, LayoutDashboard, Settings, Trash2, UserRound, UsersRound } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAccountsViewModel, type AccountDraftState } from '../../hooks/useAccountsViewModel';
 import { boardSections, getBoardSectionMeta, type BoardSection } from '../../lib/board-navigation';
 import { advanceDeveloperSequence, advanceDeveloperTapCount, canUseDeveloperShortcut, normalizeDeveloperKey } from '../../lib/developer-mode';
@@ -10,7 +10,7 @@ import { AccountTable } from './account-table';
 import { BookingDialog } from './booking-dialog';
 import { OperationsStrip } from './operations-strip';
 import { Button } from '../ui/button';
-import { Field, Input, Select } from '../ui/field';
+import { Field, Input } from '../ui/field';
 import { UseNowDialog } from './use-now-dialog';
 
 const sectionIcons = {
@@ -106,7 +106,7 @@ export function AccountBoardPage() {
               </div>
             </div>
             <div className="border-t border-[#EEF2F6] px-4 py-3 lg:hidden">
-              <CurrentMemberSwitcher currentUserId={model.currentUserId} users={model.activeUsers} onChange={model.setCurrentUserId} />
+              <MemberIdentityEntry currentUserId={model.currentUserId} groups={model.groups} users={model.activeUsers} onChange={model.setCurrentUserId} />
             </div>
             {/* Desktop: full layout */}
             <div className="hidden px-5 py-4 lg:block">
@@ -120,7 +120,7 @@ export function AccountBoardPage() {
                   <h1 className="text-[28px] font-semibold leading-tight tracking-normal text-[#15171B]">{activeMeta.label}</h1>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <CurrentMemberSwitcher currentUserId={model.currentUserId} users={model.activeUsers} onChange={model.setCurrentUserId} />
+                  <MemberIdentityEntry currentUserId={model.currentUserId} groups={model.groups} users={model.activeUsers} onChange={model.setCurrentUserId} />
                   <div className="rounded-lg bg-[#F2F5F8] px-3 py-2 font-mono text-sm tabular-nums text-[#344154]">
                     <time dateTime={model.now.toISOString()}>{formatDateTime(model.now)}</time>
                   </div>
@@ -211,27 +211,206 @@ export function AccountBoardPage() {
 
 type BoardModel = ReturnType<typeof useAccountsViewModel>;
 
-function CurrentMemberSwitcher({ currentUserId, users, onChange }: { currentUserId: string; users: User[]; onChange: (userId: string) => void }) {
-  const hasCurrentUser = users.some((user) => user.id === currentUserId);
+function MemberIdentityEntry({ currentUserId, groups, users, onChange }: { currentUserId: string; groups: Group[]; users: User[]; onChange: (userId: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const currentUser = users.find((user) => user.id === currentUserId) ?? users[0] ?? null;
+  const currentGroup = currentUser ? groups.find((group) => group.id === currentUser.groupId) : null;
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [open]);
 
   return (
-    <label className="flex min-w-[230px] items-center gap-2 rounded-xl border border-[#E6B5B0] bg-[#FFF1EF] px-3 py-2 shadow-[0_10px_24px_rgba(160,55,45,0.10)]">
-      <span className="shrink-0 text-sm font-semibold text-[#A23A32]">当前成员</span>
-      <Select
-        className="h-9 min-w-0 flex-1 border-[#D98D86] bg-white font-semibold text-[#8D2F28] focus:border-[#B9483E] focus:ring-[#D9483B]/15"
-        onChange={(event) => onChange(event.target.value)}
-        value={currentUserId}
+    <div className="relative" ref={rootRef}>
+      <button
+        aria-expanded={open}
+        className="flex min-h-11 w-full min-w-[230px] items-center gap-3 rounded-xl border border-[#E6B5B0] bg-[#FFF1EF] px-3 py-2 text-left shadow-[0_10px_24px_rgba(160,55,45,0.10)] transition hover:border-[#D98D86] hover:bg-[#FFEAE7] lg:w-auto"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
       >
-        {!hasCurrentUser && currentUserId ? <option value={currentUserId}>正在加载</option> : null}
-        {users.map((user) => (
-          <option key={user.id} value={user.id}>
-            {user.name}
-          </option>
-        ))}
-      </Select>
-    </label>
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-[#A23A32] ring-1 ring-[#F0C9C4]">
+          <UserRound size={16} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-xs font-semibold text-[#A23A32]">我的身份</span>
+          <span className="block truncate text-sm font-semibold text-[#8D2F28]">{currentUser?.name ?? '选择成员'}</span>
+        </span>
+        {currentGroup ? <span className="hidden rounded-md bg-white px-2 py-1 text-xs font-semibold text-[#A23A32] ring-1 ring-[#F0C9C4] sm:inline">{currentGroup.name}</span> : null}
+        <ChevronDown className={cn('shrink-0 text-[#A23A32] transition', open && 'rotate-180')} size={16} />
+      </button>
+
+      {open ? (
+        <MemberIdentityPopover
+          currentUserId={currentUserId}
+          groups={groups}
+          onChange={(userId) => {
+            onChange(userId);
+            setOpen(false);
+          }}
+          users={users}
+        />
+      ) : null}
+    </div>
   );
 }
+
+function MemberIdentityPopover({ currentUserId, groups, users, onChange }: { currentUserId: string; groups: Group[]; users: User[]; onChange: (userId: string) => void }) {
+  const sections = useMemo(() => buildIdentitySections(groups, users), [groups, users]);
+
+  return (
+    <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-full min-w-[300px] overflow-hidden rounded-xl border border-[#DDE3EA] bg-white shadow-[0_18px_46px_rgba(32,35,41,0.14)] sm:w-[520px]">
+      <div className="max-h-[420px] overflow-y-auto p-3">
+        {sections.length ? (
+          <div className="grid gap-3">
+            {sections.map((section) => (
+              <IdentityGroupSection currentUserId={currentUserId} key={section.group.id} onChange={onChange} section={section} />
+            ))}
+          </div>
+        ) : (
+          <div className="px-4 py-8 text-center text-sm text-[#667085]">先在成员小组里添加成员。</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type IdentitySection = {
+  group: Group;
+  users: Array<User & { initial: string }>;
+  isBoss: boolean;
+};
+
+function IdentityGroupSection({ currentUserId, onChange, section }: { currentUserId: string; onChange: (userId: string) => void; section: IdentitySection }) {
+  return (
+    <section className={cn('rounded-xl p-2.5', section.isBoss ? 'bg-[#FFF7E8] ring-1 ring-[#E8C987]' : 'bg-[#F7F9FB]')}>
+      <div className="mb-2 flex items-center justify-between gap-3 px-1">
+        <h3 className={cn('text-sm font-semibold', section.isBoss ? 'text-[#7A4D0B]' : 'text-[#344154]')}>{section.isBoss ? 'BOSS' : section.group.name}</h3>
+        <span className={cn('font-mono text-xs tabular-nums', section.isBoss ? 'text-[#9A6B22]' : 'text-[#8191A6]')}>{section.users.length} 人</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {section.users.map((user) => {
+          const selected = user.id === currentUserId;
+
+          return (
+            <button
+              className={cn(
+                'flex h-10 min-w-0 items-center gap-2 rounded-lg bg-white px-2.5 text-left text-sm font-medium text-[#202329] ring-1 ring-[#E4E9EF] transition hover:bg-[#EEF4FA]',
+                section.isBoss && 'ring-[#E8D3A8] hover:bg-[#FFFDF7]',
+                selected && (section.isBoss ? 'bg-[#FFECC2] ring-[#C88B20]' : 'bg-[#EAF5EF] ring-[#8FBAA4]'),
+              )}
+              key={user.id}
+              onClick={() => onChange(user.id)}
+              type="button"
+            >
+              <span className={cn('grid h-5 w-5 shrink-0 place-items-center rounded-md font-mono text-[11px] tabular-nums', section.isBoss ? 'bg-[#F3D69D] text-[#7A4D0B]' : 'bg-[#EEF2F6] text-[#667085]')}>
+                {user.initial}
+              </span>
+              <span className="min-w-0 flex-1 truncate">{user.name}</span>
+              {selected ? <Check className={cn('shrink-0', section.isBoss ? 'text-[#8A5A12]' : 'text-[#3F7A5F]')} size={15} /> : null}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function buildIdentitySections(groups: Group[], users: User[]): IdentitySection[] {
+  const collator = new Intl.Collator('zh-CN');
+  const sortedGroups = [...groups].sort((a, b) => Number(isBossGroupName(b.name)) - Number(isBossGroupName(a.name)));
+
+  return sortedGroups
+    .map((group) => ({
+      group,
+      isBoss: isBossGroupName(group.name),
+      users: users
+        .filter((user) => user.groupId === group.id)
+        .map((user) => ({ ...user, initial: getMemberInitial(user.name) }))
+        .sort((a, b) => a.initial.localeCompare(b.initial) || collator.compare(a.name, b.name)),
+    }))
+    .filter((section) => section.users.length > 0);
+}
+
+function isBossGroupName(name: string): boolean {
+  const normalized = name.replace(/\s/g, '').toLowerCase();
+  return normalized === 'boss' || normalized === 'boss组' || normalized === 'boss小组';
+}
+
+function getMemberInitial(name: string): string {
+  const first = name.trim().charAt(0);
+  if (!first) {
+    return '#';
+  }
+
+  if (/^[a-z]$/i.test(first)) {
+    return first.toUpperCase();
+  }
+
+  if (chineseInitials[first]) {
+    return chineseInitials[first];
+  }
+
+  for (let index = pinyinInitialRanges.length - 1; index >= 0; index -= 1) {
+    const range = pinyinInitialRanges[index];
+    if (first.localeCompare(range.start, 'zh-CN') >= 0) {
+      return range.initial;
+    }
+  }
+
+  return '#';
+}
+
+const pinyinInitialRanges = [
+  { initial: 'A', start: '阿' },
+  { initial: 'B', start: '八' },
+  { initial: 'C', start: '嚓' },
+  { initial: 'D', start: '咑' },
+  { initial: 'E', start: '妸' },
+  { initial: 'F', start: '发' },
+  { initial: 'G', start: '旮' },
+  { initial: 'H', start: '哈' },
+  { initial: 'J', start: '丌' },
+  { initial: 'K', start: '咔' },
+  { initial: 'L', start: '垃' },
+  { initial: 'M', start: '妈' },
+  { initial: 'N', start: '拏' },
+  { initial: 'O', start: '噢' },
+  { initial: 'P', start: '妑' },
+  { initial: 'Q', start: '七' },
+  { initial: 'R', start: '呥' },
+  { initial: 'S', start: '仨' },
+  { initial: 'T', start: '他' },
+  { initial: 'W', start: '哇' },
+  { initial: 'X', start: '夕' },
+  { initial: 'Y', start: '丫' },
+  { initial: 'Z', start: '帀' },
+];
+
+const chineseInitials: Record<string, string> = {
+  陈: 'C',
+  林: 'L',
+  李: 'L',
+  刘: 'L',
+  王: 'W',
+  小: 'X',
+  许: 'X',
+  杨: 'Y',
+  张: 'Z',
+  周: 'Z',
+  赵: 'Z',
+};
 
 function BoardLoadingState() {
   return (
