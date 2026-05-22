@@ -12,6 +12,7 @@ export type MockSnapshot = {
   users: User[];
   groups: Group[];
   bookings: Booking[];
+  projects: string[];
   defaultUser: User;
 };
 
@@ -119,6 +120,7 @@ export function createMockSnapshot(now = new Date()): MockSnapshot {
     users,
     groups,
     bookings,
+    projects: Array.from(new Set(bookings.map((booking) => booking.projectName))).sort(),
     defaultUser: users[0],
   };
 }

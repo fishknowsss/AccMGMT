@@ -42,6 +42,7 @@ export type CloudSnapshot = {
   bookings: CloudBooking[];
   users: CloudUser[];
   groups: CloudGroup[];
+  projects?: string[];
   defaultUser: User;
 };
 
@@ -50,6 +51,7 @@ export type BoardSnapshot = {
   bookings: Booking[];
   users: User[];
   groups: Group[];
+  projects: string[];
   defaultUser: User;
 };
 
@@ -100,6 +102,7 @@ export function mapCloudSnapshot(snapshot: CloudSnapshot): BoardSnapshot {
     })),
     users,
     groups,
+    projects: normalizeProjects(snapshot.projects, snapshot.bookings),
     defaultUser: snapshot.defaultUser,
   };
 }
@@ -120,14 +123,24 @@ export async function getCloudSnapshot(baseSnapshot: BoardSnapshot): Promise<Boa
     throw new Error(await readErrorMessage(response));
   }
 
-  const data = (await response.json()) as { accounts: CloudAccount[]; bookings: CloudBooking[]; users: CloudUser[]; groups: CloudGroup[] };
+  const data = (await response.json()) as { accounts: CloudAccount[]; bookings: CloudBooking[]; users: CloudUser[]; groups: CloudGroup[]; projects?: string[] };
   return mapCloudSnapshot({
     accounts: data.accounts,
     bookings: data.bookings,
     users: data.users ?? baseSnapshot.users.map((u) => ({ id: u.id, name: u.name, email: u.email ?? null, groupId: u.groupId })),
     groups: data.groups ?? baseSnapshot.groups.map((g) => ({ id: g.id, name: g.name, concurrentLimit: g.concurrentLimit })),
+    projects: data.projects ?? baseSnapshot.projects,
     defaultUser: baseSnapshot.defaultUser,
   });
+}
+
+export async function createCloudProject(name: string): Promise<string> {
+  const response = await fetch('/api/projects', {
+    method: 'POST',
+    headers: writeHeaders(),
+    body: JSON.stringify({ name }),
+  });
+  return readSingleEntity<string>(response, 'project');
 }
 
 export async function createCloudAccount(payload: AccountWritePayload): Promise<CloudAccount> {
@@ -258,6 +271,10 @@ function bookingWriteHeaders(): HeadersInit {
   return {
     'content-type': 'application/json',
   };
+}
+
+function normalizeProjects(projects: string[] | undefined, bookings: CloudBooking[]): string[] {
+  return Array.from(new Set([...(projects ?? []), ...bookings.map((booking) => booking.projectName)].map((project) => project.trim()).filter(Boolean))).sort();
 }
 
 async function readCloudEntity<T extends 'account' | 'booking'>(

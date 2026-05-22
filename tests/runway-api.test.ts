@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cancelCloudBooking, createCloudAccount, createCloudBooking, mapCloudSnapshot, releaseCloudBooking, updateCloudBooking } from '../src/lib/runway-api';
+import { cancelCloudBooking, createCloudAccount, createCloudBooking, createCloudProject, mapCloudSnapshot, releaseCloudBooking, updateCloudBooking } from '../src/lib/runway-api';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -93,6 +93,36 @@ describe('mapCloudSnapshot', () => {
     });
 
     expect(snapshot.bookings[0].status).toBe('cancelled');
+  });
+
+  it('keeps projects that do not have bookings yet', () => {
+    const snapshot = mapCloudSnapshot({
+      accounts: [],
+      bookings: [
+        {
+          id: 'booking-1',
+          accountId: 'account-1',
+          userName: '小王',
+          groupName: 'A组',
+          projectName: '广告片',
+          startAt: '2026-05-09T06:00:00.000Z',
+          endAt: '2026-05-09T08:00:00.000Z',
+          releasedAt: null,
+          createdAt: '2026-05-09T05:50:00.000Z',
+        },
+      ],
+      users: [],
+      groups: [],
+      projects: ['新项目'],
+      defaultUser: {
+        id: 'user-wang',
+        name: '小王',
+        email: 'wang@studio.local',
+        groupId: 'group-a',
+      },
+    });
+
+    expect(snapshot.projects).toEqual(['广告片', '新项目']);
   });
 });
 
@@ -257,5 +287,26 @@ describe('cloud write headers', () => {
         method: 'DELETE',
       }),
     );
+  });
+
+  it('creates projects without an operator pin', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ project: '新项目' }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    await expect(createCloudProject('新项目')).resolves.toBe('新项目');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/projects',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'content-type': 'application/json' }),
+      }),
+    );
+    const headers = (fetchMock.mock.calls[0]?.[1] as RequestInit | undefined)?.headers as Record<string, string> | undefined;
+    expect(headers?.['x-operator-pin']).toBeUndefined();
   });
 });

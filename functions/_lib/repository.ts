@@ -39,7 +39,7 @@ type GroupRow = {
 };
 
 export type D1Repository = {
-  listSnapshot(): Promise<{ accounts: Account[]; bookings: Booking[]; users: User[]; groups: Group[] }>;
+  listSnapshot(): Promise<{ accounts: Account[]; bookings: Booking[]; users: User[]; groups: Group[]; projects: string[] }>;
   createAccount(input: { email: string; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number }): Promise<Account>;
   updateAccount(id: string, input: { email: string; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number }): Promise<Account | null>;
   createBooking(input: BookingDraft): Promise<Booking>;
@@ -54,6 +54,7 @@ export type D1Repository = {
   createGroup(input: { name: string; concurrentLimit: number; isActive: boolean }): Promise<Group>;
   updateGroup(id: string, input: { name: string; concurrentLimit: number; isActive: boolean }): Promise<Group | null>;
   deleteGroup(id: string): Promise<boolean>;
+  createProject(name: string): Promise<string>;
   renameProject(oldName: string, newName: string): Promise<number>;
   deleteProject(name: string): Promise<number>;
 };
@@ -61,7 +62,7 @@ export type D1Repository = {
 export function createRepository(db: D1Database): D1Repository {
   return {
     async listSnapshot() {
-      const [accountsResult, bookingsResult, usersResult, groupsResult] = await Promise.all([
+      const [accountsResult, bookingsResult, usersResult, groupsResult, projectsResult] = await Promise.all([
         db.prepare('SELECT id, email, label, renewal_date, is_active, sort_order, created_at FROM accounts ORDER BY sort_order ASC, email ASC').all<AccountRow>(),
         db
           .prepare(
@@ -72,13 +73,17 @@ export function createRepository(db: D1Database): D1Repository {
           .all<BookingRow>(),
         db.prepare('SELECT id, name, email, group_id, is_active FROM users ORDER BY name ASC').all<UserRow>(),
         db.prepare('SELECT id, name, concurrent_limit, sort_order, is_active FROM groups ORDER BY sort_order ASC, name ASC').all<GroupRow>(),
+        db.prepare('SELECT name FROM projects ORDER BY name ASC').all<{ name: string }>(),
       ]);
+
+      const projects = Array.from(new Set([...projectsResult.results.map((project) => project.name), ...bookingsResult.results.map((booking) => booking.project_name)].filter(Boolean))).sort();
 
       return {
         accounts: accountsResult.results.map(mapAccount),
         bookings: bookingsResult.results.map(mapBooking),
         users: usersResult.results.map(mapUser),
         groups: groupsResult.results.map(mapGroup),
+        projects,
       };
     },
 
@@ -266,7 +271,23 @@ export function createRepository(db: D1Database): D1Repository {
       return getChangedRows(result) > 0;
     },
 
+    async createProject(name) {
+      await db
+        .prepare('INSERT INTO projects (name) VALUES (?1)')
+        .bind(name)
+        .run();
+      return name;
+    },
+
     async renameProject(oldName, newName) {
+      await db
+        .prepare('INSERT OR IGNORE INTO projects (name) VALUES (?1)')
+        .bind(oldName)
+        .run();
+      await db
+        .prepare('UPDATE projects SET name = ?1, updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\') WHERE name = ?2')
+        .bind(newName, oldName)
+        .run();
       const result = await db
         .prepare('UPDATE bookings SET project_name = ?1 WHERE project_name = ?2')
         .bind(newName, oldName)
@@ -275,6 +296,7 @@ export function createRepository(db: D1Database): D1Repository {
     },
 
     async deleteProject(name) {
+      await db.prepare('DELETE FROM projects WHERE name = ?1').bind(name).run();
       const result = await db
         .prepare("UPDATE bookings SET project_name = '' WHERE project_name = ?1")
         .bind(name)

@@ -33,6 +33,7 @@ import {
   createCloudAccount,
   createCloudBooking,
   createCloudGroup,
+  createCloudProject,
   createCloudUser,
   deleteCloudGroup,
   deleteCloudProject,
@@ -88,6 +89,7 @@ export function useAccountsViewModel() {
   const [snapshotSource, setSnapshotSource] = useState<SnapshotSource>('loading');
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [projectNames, setProjectNames] = useState<string[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<Array<{ id: string; name: string; concurrentLimit?: number; isActive?: boolean }>>([]);
   const [filters, setFilters] = useState<AccountFiltersState>(emptyFilters);
@@ -101,6 +103,7 @@ export function useAccountsViewModel() {
   function applySnapshot(next: BoardSnapshot) {
     setAccounts(next.accounts);
     setBookings(next.bookings);
+    setProjectNames(next.projects);
     setUsers(next.users);
     setGroups(next.groups);
   }
@@ -693,10 +696,21 @@ export function useAccountsViewModel() {
     };
   }
 
-  const projects = useMemo(
-    () => Array.from(new Set(bookings.map((b) => b.projectName).filter(Boolean))).sort(),
-    [bookings],
-  );
+  const projects = useMemo(() => normalizeProjects([...projectNames, ...bookings.map((b) => b.projectName)]), [bookings, projectNames]);
+
+  async function createProject(name: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const trimmed = name.trim();
+    if (!trimmed) return { ok: false, reason: '项目名不能为空' };
+    if (projects.includes(trimmed)) return { ok: false, reason: '项目名已存在' };
+    try {
+      await createCloudProject(trimmed);
+      setProjectNames((current) => normalizeProjects([...current, trimmed]));
+      setToast('项目已新增。');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
+  }
 
   async function renameProject(oldName: string, newName: string): Promise<{ ok: true } | { ok: false; reason: string }> {
     const trimmed = newName.trim();
@@ -704,6 +718,7 @@ export function useAccountsViewModel() {
     if (projects.includes(trimmed) && trimmed !== oldName) return { ok: false, reason: '项目名已存在' };
     try {
       await renameCloudProject(oldName, trimmed);
+      setProjectNames((current) => normalizeProjects(current.map((project) => (project === oldName ? trimmed : project))));
       setBookings((current) => current.map((b) => (b.projectName === oldName ? { ...b, projectName: trimmed } : b)));
       setToast('项目已更名。');
       return { ok: true };
@@ -715,6 +730,7 @@ export function useAccountsViewModel() {
   async function deleteProject(name: string): Promise<{ ok: true } | { ok: false; reason: string }> {
     try {
       await deleteCloudProject(name);
+      setProjectNames((current) => current.filter((project) => project !== name));
       setBookings((current) => current.map((b) => (b.projectName === name ? { ...b, projectName: '' } : b)));
       setToast('项目已删除。');
       return { ok: true };
@@ -762,6 +778,7 @@ export function useAccountsViewModel() {
     createUsersFromText,
     updateUser,
     deleteUser,
+    createProject,
     renameProject,
     deleteProject,
     getEmptyAccountDraft,
@@ -857,6 +874,10 @@ function createEditBookingForm(booking: Booking): BookingFormState {
     endTime: toLocalInputValue(new Date(booking.endTime)),
     error: '',
   };
+}
+
+function normalizeProjects(projects: string[]): string[] {
+  return Array.from(new Set(projects.map((project) => project.trim()).filter(Boolean))).sort();
 }
 
 function readSavedCurrentUserId(): string {
