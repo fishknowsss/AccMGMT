@@ -17,6 +17,15 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
   return json({ account });
 };
 
+export const onRequestDelete: PagesFunction<Env> = async ({ env, params }) => {
+  const deleted = await createRepository(env.DB).deleteAccount(String(params.id));
+  if (!deleted) {
+    return json({ message: '账号不存在' }, { status: 404 });
+  }
+
+  return new Response(null, { status: 204 });
+};
+
 function normalizeAccountInput(
   body: unknown,
 ): { ok: true; value: { email: string; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number } } | { ok: false; reason: string } {

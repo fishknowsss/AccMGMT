@@ -161,6 +161,13 @@ export async function updateCloudAccount(accountId: string, payload: AccountWrit
   return readCloudEntity(response, 'account');
 }
 
+export async function deleteCloudAccount(accountId: string): Promise<void> {
+  const response = await fetch(`/api/accounts/${accountId}`, { method: 'DELETE' });
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response));
+  }
+}
+
 export async function createCloudBooking(payload: BookingWritePayload): Promise<CloudBooking> {
   const response = await fetch('/api/bookings', {
     method: 'POST',

@@ -42,6 +42,7 @@ export type D1Repository = {
   listSnapshot(): Promise<{ accounts: Account[]; bookings: Booking[]; users: User[]; groups: Group[]; projects: string[] }>;
   createAccount(input: { email: string; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number }): Promise<Account>;
   updateAccount(id: string, input: { email: string; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number }): Promise<Account | null>;
+  deleteAccount(id: string): Promise<boolean>;
   createBooking(input: BookingDraft): Promise<Booking>;
   updateFutureBooking(id: string, input: BookingDraft, now: string): Promise<Booking | null>;
   cancelFutureBooking(id: string, releasedAt: string): Promise<Booking | null>;
@@ -108,6 +109,11 @@ export function createRepository(db: D1Database): D1Repository {
         .run();
 
       return getAccountById(db, id);
+    },
+
+    async deleteAccount(id) {
+      const result = await db.prepare('DELETE FROM accounts WHERE id = ?1').bind(id).run();
+      return getChangedRows(result) > 0;
     },
 
     async createBooking(input) {

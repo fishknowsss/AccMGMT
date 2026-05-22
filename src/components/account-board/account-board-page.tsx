@@ -93,7 +93,7 @@ export function AccountBoardPage() {
           </div>
         </aside>
 
-          <main className={cn('flex min-w-0 flex-1 flex-col gap-3 sm:gap-4', (activeSection === 'accounts' || activeSection === 'projects') ? 'lg:min-h-0 lg:overflow-y-auto lg:overflow-x-hidden' : 'lg:min-h-0 lg:overflow-hidden')}>
+        <main className="flex min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:gap-4 lg:min-h-0">
           <header className="shrink-0 rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
             {/* Mobile: compact single row */}
             <div className="flex items-center justify-between gap-3 px-4 py-3 lg:hidden">
@@ -147,33 +147,35 @@ export function AccountBoardPage() {
             </nav>
           </div>
 
-          {activeSection === 'board' ? (
-            model.isLoading ? (
-              <BoardLoadingState />
-            ) : (
-              <>
-                <OperationsStrip stats={model.view.stats} />
-                <AccountFilters filters={model.filters} groups={model.groups} onChange={model.updateFilters} onFindAvailable={model.findAvailableAccount} />
-              </>
-            )
-          ) : null}
+          <section className={cn('min-h-0 flex-1', activeSection === 'board' || activeSection === 'groups' ? 'flex flex-col gap-3 overflow-hidden sm:gap-4' : 'overflow-y-auto overflow-x-hidden pr-1')}>
+            {activeSection === 'board' ? (
+              model.isLoading ? (
+                <BoardLoadingState />
+              ) : (
+                <>
+                  <OperationsStrip stats={model.view.stats} />
+                  <AccountFilters filters={model.filters} groups={model.groups} onChange={model.updateFilters} onFindAvailable={model.findAvailableAccount} />
+                </>
+              )
+            ) : null}
 
-          {activeSection === 'board' && !model.isLoading ? (
-            <AccountTable
-              now={model.now}
-              onRelease={(row) => row.current && model.releaseBooking(row.current)}
-              onReserve={model.openBooking}
-              onEditBooking={model.openEditBooking}
-              onCancelBooking={model.cancelBooking}
-              onCopyEmail={model.copyAccountEmail}
-              onUseNow={model.openUseNow}
-              currentUserId={model.currentUserId}
-              rows={model.view.rows}
-            />
-          ) : null}
-          {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} onDeveloperTap={handleDeveloperTap} /> : null}
-          {activeSection === 'groups' ? <MemberGroupsPanel developerMode={developerMode} model={model} /> : null}
-          {activeSection === 'projects' ? <ProjectsPanel developerMode={developerMode} model={model} /> : null}
+            {activeSection === 'board' && !model.isLoading ? (
+              <AccountTable
+                now={model.now}
+                onRelease={(row) => row.current && model.releaseBooking(row.current)}
+                onReserve={model.openBooking}
+                onEditBooking={model.openEditBooking}
+                onCancelBooking={model.cancelBooking}
+                onCopyEmail={model.copyAccountEmail}
+                onUseNow={model.openUseNow}
+                currentUserId={model.currentUserId}
+                rows={model.view.rows}
+              />
+            ) : null}
+            {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} onDeveloperTap={handleDeveloperTap} /> : null}
+            {activeSection === 'groups' ? <MemberGroupsPanel developerMode={developerMode} model={model} /> : null}
+            {activeSection === 'projects' ? <ProjectsPanel developerMode={developerMode} model={model} /> : null}
+          </section>
         </main>
       </div>
 
@@ -626,15 +628,16 @@ function AccountEditorSection({ model }: { model: BoardModel }) {
         <span className="font-mono text-sm tabular-nums text-[#667085]">{model.accounts.length} 个账号</span>
       </div>
       <AccountCreator getDefaultDraft={model.getEmptyAccountDraft} onCreate={model.createAccount} />
-      <div className="hidden grid-cols-[110px_minmax(260px,1fr)_160px_120px] border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-3 text-sm font-medium text-[#667085] xl:grid">
+      <div className="hidden grid-cols-[110px_minmax(260px,1fr)_160px_120px_40px] border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-3 text-sm font-medium text-[#667085] xl:grid">
         <div>编号</div>
         <div>账号邮箱</div>
         <div>续费日期</div>
         <div>状态</div>
+        <div />
       </div>
       <div className="grid divide-y divide-[#EEF2F6]">
         {model.accounts.map((account) => (
-          <AccountEditor account={account} key={account.id} onSave={model.updateAccount} />
+          <AccountEditor account={account} key={account.id} onDelete={model.deleteAccount} onSave={model.updateAccount} />
         ))}
       </div>
     </section>
@@ -742,13 +745,14 @@ function ReadonlySetting({ label, value, onClick }: { label: string; value: stri
   );
 }
 
-function AccountEditor({ account, onSave }: { account: Account; onSave: BoardModel['updateAccount'] }) {
+function AccountEditor({ account, onDelete, onSave }: { account: Account; onDelete: BoardModel['deleteAccount']; onSave: BoardModel['updateAccount'] }) {
   const [draft, setDraft] = useState({
     email: account.email,
     label: account.label,
     renewalDate: account.renewalDate,
     isActive: account.isActive,
   });
+  const [error, setError] = useState('');
 
   useEffect(() => {
     setDraft({
@@ -757,10 +761,16 @@ function AccountEditor({ account, onSave }: { account: Account; onSave: BoardMod
       renewalDate: account.renewalDate,
       isActive: account.isActive,
     });
+    setError('');
   }, [account]);
 
+  async function handleDelete() {
+    const result = await onDelete(account.id);
+    setError(result.ok ? '' : result.reason);
+  }
+
   return (
-    <article className="grid gap-3 px-5 py-4 xl:grid-cols-[110px_minmax(260px,1fr)_160px_120px] xl:items-center">
+    <article className="grid gap-3 px-5 py-4 xl:grid-cols-[110px_minmax(260px,1fr)_160px_120px_40px] xl:items-center">
       <Input value={draft.label} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
       <Input value={draft.email} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
       <Input type="date" value={draft.renewalDate} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, renewalDate: event.target.value })} />
@@ -777,6 +787,10 @@ function AccountEditor({ account, onSave }: { account: Account; onSave: BoardMod
         />
         启用账号
       </label>
+      <Button aria-label="删除账号" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={handleDelete} size="icon" type="button" variant="ghost">
+        <Trash2 size={16} />
+      </Button>
+      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] xl:col-span-5">{error}</div> : null}
     </article>
   );
 }

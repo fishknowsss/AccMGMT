@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cancelCloudBooking, createCloudAccount, createCloudBooking, createCloudProject, mapCloudSnapshot, releaseCloudBooking, updateCloudBooking } from '../src/lib/runway-api';
+import { cancelCloudBooking, createCloudAccount, createCloudBooking, createCloudProject, deleteCloudAccount, mapCloudSnapshot, releaseCloudBooking, updateCloudBooking } from '../src/lib/runway-api';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -163,6 +163,14 @@ describe('cloud write headers', () => {
     );
     const headers = (vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit | undefined)?.headers as Record<string, string> | undefined;
     expect(headers?.['x-operator-pin']).toBeUndefined();
+  });
+
+  it('deletes an account through the account endpoint', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }));
+
+    await deleteCloudAccount('account-1');
+
+    expect(fetch).toHaveBeenCalledWith('/api/accounts/account-1', { method: 'DELETE' });
   });
 
   it('does not send the operator pin for daily booking operations', async () => {

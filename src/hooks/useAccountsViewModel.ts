@@ -35,6 +35,7 @@ import {
   createCloudGroup,
   createCloudProject,
   createCloudUser,
+  deleteCloudAccount,
   deleteCloudGroup,
   deleteCloudProject,
   deleteCloudUser,
@@ -516,6 +517,22 @@ export function useAccountsViewModel() {
     }
   }
 
+  async function deleteAccount(accountId: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+    if (!accounts.some((account) => account.id === accountId)) {
+      return { ok: false, reason: '账号不存在' };
+    }
+
+    try {
+      await deleteCloudAccount(accountId);
+      setAccounts((current) => current.filter((account) => account.id !== accountId));
+      setBookings((current) => current.filter((booking) => booking.accountId !== accountId));
+      setToast('账号已删除。');
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
+  }
+
   async function createGroup(draft: GroupDraftState): Promise<{ ok: true } | { ok: false; reason: string }> {
     const validation = validateGroupDraft(draft, groups);
     if (!validation.ok) {
@@ -771,6 +788,7 @@ export function useAccountsViewModel() {
     copyAccountEmail,
     updateAccount,
     createAccount,
+    deleteAccount,
     createGroup,
     updateGroup,
     deleteGroup,
