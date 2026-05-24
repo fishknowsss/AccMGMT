@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   addHours,
   buildAccountsView,
+  buildUsageRecordsView,
   describeConflict,
   emptyFilters,
   fromLocalInputValue,
@@ -212,6 +213,17 @@ export function useAccountsViewModel() {
         filters,
       }),
     [accounts, bookings, filters, groups, now, users],
+  );
+  const recordsView = useMemo(
+    () =>
+      buildUsageRecordsView({
+        accounts,
+        bookings,
+        users,
+        groups,
+        now,
+      }),
+    [accounts, bookings, groups, now, users],
   );
 
   const accountById = useMemo(() => new Map(accounts.map((account) => [account.id, account])), [accounts]);
@@ -768,6 +780,7 @@ export function useAccountsViewModel() {
     now,
     filters,
     view,
+    recordsView,
     toast,
     useNowForm,
     bookingForm,

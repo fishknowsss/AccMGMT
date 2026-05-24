@@ -67,6 +67,38 @@ export type AccountRow = {
   canRelease: boolean;
 };
 
+export type UsageRecordStatus = 'completed' | 'ended' | 'cancelled';
+
+export type UsageRecord = {
+  id: string;
+  booking: Booking;
+  account: Account | null;
+  user: User | null;
+  group: Group | null;
+  status: UsageRecordStatus;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+};
+
+export type UsageRecordsViewInput = {
+  accounts: Account[];
+  bookings: Booking[];
+  users: User[];
+  groups: Group[];
+  now: Date;
+};
+
+export type UsageRecordsView = {
+  records: UsageRecord[];
+  stats: {
+    total: number;
+    completed: number;
+    ended: number;
+    cancelled: number;
+  };
+};
+
 export type RenewalState = 'normal' | 'soon' | 'overdue';
 
 export type AccountsViewInput = {
@@ -382,6 +414,46 @@ export function buildAccountsView(input: AccountsViewInput): AccountsView {
   };
 }
 
+export function buildUsageRecordsView(input: UsageRecordsViewInput): UsageRecordsView {
+  const accountsById = new Map(input.accounts.map((account) => [account.id, account]));
+  const usersById = new Map(input.users.map((user) => [user.id, user]));
+  const groupsById = new Map(input.groups.map((group) => [group.id, group]));
+  const records = input.bookings
+    .map((booking) => {
+      const status = getUsageRecordStatus(booking, input.now);
+      if (!status) {
+        return null;
+      }
+
+      const durationMinutes = status === 'cancelled' ? 0 : Math.max(0, Math.ceil((timestamp(booking.endTime) - timestamp(booking.startTime)) / 60_000));
+
+      return {
+        id: booking.id,
+        booking,
+        account: accountsById.get(booking.accountId) ?? null,
+        user: usersById.get(booking.userId) ?? null,
+        group: groupsById.get(booking.groupId) ?? null,
+        status,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        durationMinutes,
+      } satisfies UsageRecord;
+    })
+    .filter((record): record is UsageRecord => Boolean(record))
+    .sort((a, b) => timestamp(b.endTime) - timestamp(a.endTime));
+
+  const stats = records.reduce(
+    (acc, record) => {
+      acc.total += 1;
+      acc[record.status] += 1;
+      return acc;
+    },
+    { total: 0, completed: 0, ended: 0, cancelled: 0 },
+  );
+
+  return { records, stats };
+}
+
 export function selectAvailableAccounts(accounts: Account[], bookings: Booking[], now = new Date(), limit = 5): Account[] {
   return accounts
     .filter((account) => account.isActive)
@@ -394,6 +466,17 @@ export function selectAvailableAccounts(accounts: Account[], bookings: Booking[]
     })
     .slice(0, limit)
     .map((item) => item.account);
+}
+
+export function formatUsageDuration(minutes: number): string {
+  const value = Math.max(0, Math.floor(minutes));
+  if (value < 60) {
+    return `${value} 分钟`;
+  }
+
+  const hours = Math.floor(value / 60);
+  const rest = value % 60;
+  return rest ? `${hours} 小时 ${rest} 分钟` : `${hours} 小时`;
 }
 
 export function describeConflict(conflict: Booking, users: User[], groups: Group[]): string {
@@ -473,6 +556,22 @@ export function roundToNextFiveMinutes(date: Date): Date {
 
 export function addHours(date: Date, hours: number): Date {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
+}
+
+function getUsageRecordStatus(booking: Booking, now: Date): UsageRecordStatus | null {
+  const start = timestamp(booking.startTime);
+  const end = timestamp(booking.endTime);
+  const current = now.getTime();
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end > current) {
+    return null;
+  }
+
+  if (booking.status === 'confirmed') {
+    return end >= start ? 'completed' : null;
+  }
+
+  return end >= start ? 'ended' : 'cancelled';
 }
 
 function buildAccountRow(account: Account, input: AccountsViewInput): AccountRow {

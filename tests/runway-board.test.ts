@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildUsageRecordsView,
   buildAccountsView,
   canReleaseBooking,
+  formatUsageDuration,
   findBookingConflict,
   fromLocalInputValue,
   getActiveGroups,
@@ -575,5 +577,93 @@ describe('selectAvailableAccounts', () => {
     );
 
     expect(selected.map((account) => account.id)).toEqual(['account-3', 'account-4', 'account-5', 'account-6', 'account-7']);
+  });
+});
+
+describe('buildUsageRecordsView', () => {
+  it('lists ended usage records in reverse end time order', () => {
+    const view = buildUsageRecordsView(
+      {
+        accounts,
+        bookings: [
+          booking({
+            id: 'past-confirmed',
+            accountId: 'account-1',
+            userId: 'user-1',
+            groupId: 'group-a',
+            startTime: '2026-05-09T07:00:00.000Z',
+            endTime: '2026-05-09T08:30:00.000Z',
+            status: 'confirmed',
+          }),
+          booking({
+            id: 'manual-ended',
+            accountId: 'account-2',
+            userId: 'user-2',
+            groupId: 'group-b',
+            startTime: '2026-05-09T08:00:00.000Z',
+            endTime: '2026-05-09T09:15:00.000Z',
+            status: 'cancelled',
+          }),
+          booking({
+            id: 'current',
+            startTime: '2026-05-09T09:00:00.000Z',
+            endTime: '2026-05-09T11:00:00.000Z',
+            status: 'confirmed',
+          }),
+          booking({
+            id: 'future',
+            startTime: '2026-05-09T12:00:00.000Z',
+            endTime: '2026-05-09T13:00:00.000Z',
+            status: 'confirmed',
+          }),
+        ],
+        users,
+        groups,
+        now,
+      },
+    );
+
+    expect(view.records.map((record) => record.id)).toEqual(['manual-ended', 'past-confirmed']);
+    expect(view.records[0]).toMatchObject({
+      account: { label: 'R-02' },
+      user: { name: '小林' },
+      group: { name: 'B组' },
+      status: 'ended',
+      durationMinutes: 75,
+    });
+    expect(view.stats).toEqual({ total: 2, completed: 1, ended: 1, cancelled: 0 });
+  });
+
+  it('keeps cancelled reservations separate from real usage duration', () => {
+    const view = buildUsageRecordsView({
+      accounts,
+      bookings: [
+        booking({
+          id: 'cancelled-before-start',
+          startTime: '2026-05-09T12:00:00.000Z',
+          endTime: '2026-05-09T09:30:00.000Z',
+          status: 'cancelled',
+        }),
+      ],
+      users,
+      groups,
+      now,
+    });
+
+    expect(view.records).toHaveLength(1);
+    expect(view.records[0]).toMatchObject({
+      id: 'cancelled-before-start',
+      status: 'cancelled',
+      durationMinutes: 0,
+    });
+    expect(view.stats.cancelled).toBe(1);
+  });
+});
+
+describe('formatUsageDuration', () => {
+  it('formats short and hour-long usage durations', () => {
+    expect(formatUsageDuration(0)).toBe('0 分钟');
+    expect(formatUsageDuration(45)).toBe('45 分钟');
+    expect(formatUsageDuration(125)).toBe('2 小时 5 分钟');
   });
 });

@@ -17,4 +17,10 @@ describe('accounts view model cloud synchronization', () => {
     expect(viewModelSource).toContain('currentUserId === defaultUser.id || isLoading || snapshotSource !== \'cloud\' || activeUsers.length === 0');
     expect(viewModelSource).toContain('const [users, setUsers] = useState<User[]>([])');
   });
+
+  it('derives usage records from the same snapshot as the board', () => {
+    expect(viewModelSource).toContain('buildUsageRecordsView');
+    expect(viewModelSource).toContain('const recordsView = useMemo');
+    expect(viewModelSource).toContain('recordsView,');
+  });
 });

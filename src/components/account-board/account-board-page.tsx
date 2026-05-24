@@ -1,4 +1,4 @@
-import { Check, ChevronDown, FolderOpen, LayoutDashboard, Settings, Trash2, UserRound, UsersRound } from 'lucide-react';
+import { Check, ChevronDown, FolderOpen, History, LayoutDashboard, Settings, Trash2, UserRound, UsersRound } from 'lucide-react';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccountsViewModel, type AccountDraftState } from '../../hooks/useAccountsViewModel';
 import { boardSections, getBoardSectionMeta, type BoardSection } from '../../lib/board-navigation';
@@ -12,12 +12,14 @@ import { OperationsStrip } from './operations-strip';
 import { Button } from '../ui/button';
 import { Field, Input } from '../ui/field';
 import { UseNowDialog } from './use-now-dialog';
+import { UsageRecordsPanel } from './usage-records-panel';
 
 const sectionIcons = {
   board: LayoutDashboard,
   accounts: Settings,
   groups: UsersRound,
   projects: FolderOpen,
+  records: History,
 } satisfies Record<BoardSection, React.FC<{ size?: number; className?: string }>>;
 
 const primarySections = boardSections.filter((section) => section.id !== 'accounts');
@@ -147,7 +149,7 @@ export function AccountBoardPage() {
             </nav>
           </div>
 
-          <section className={cn('min-h-0 flex-1', activeSection === 'board' || activeSection === 'groups' ? 'flex flex-col gap-3 overflow-hidden sm:gap-4' : 'overflow-y-auto overflow-x-hidden pr-1')}>
+          <section className={cn('min-h-0 flex-1', ['board', 'groups', 'records'].includes(activeSection) ? 'flex flex-col gap-3 overflow-hidden sm:gap-4' : 'overflow-y-auto overflow-x-hidden pr-1')}>
             {activeSection === 'board' ? (
               model.isLoading ? (
                 <BoardLoadingState />
@@ -175,6 +177,7 @@ export function AccountBoardPage() {
             {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} onDeveloperTap={handleDeveloperTap} /> : null}
             {activeSection === 'groups' ? <MemberGroupsPanel developerMode={developerMode} model={model} /> : null}
             {activeSection === 'projects' ? <ProjectsPanel developerMode={developerMode} model={model} /> : null}
+            {activeSection === 'records' ? <UsageRecordsPanel now={model.now} view={model.recordsView} /> : null}
           </section>
         </main>
       </div>
