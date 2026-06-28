@@ -9,10 +9,10 @@ import {
   getAccountRuntime,
   getActiveGroups,
   getActiveUsers,
+  getDefaultBookingStartTime,
   getNextAccountLabel,
   parseMemberImportNames,
   resolveCurrentUser,
-  roundToNextFiveMinutes,
   selectAvailableAccounts,
   toLocalInputValue,
   validateGroupDeletion,
@@ -248,7 +248,7 @@ export function useAccountsViewModel() {
   }
 
   function openBooking(accountId: string) {
-    setBookingForm(createBookingForm(accountId, now, defaultUser));
+    setBookingForm(createBookingForm(accountId, bookings, now, defaultUser));
   }
 
   function openEditBooking(booking: Booking) {
@@ -888,8 +888,8 @@ function createUseNowForm(accountId: string, bookings: Booking[], now: Date, def
   };
 }
 
-function createBookingForm(accountId: string, now: Date, defaultUser: User): BookingFormState {
-  const start = roundToNextFiveMinutes(addHours(now, 1));
+function createBookingForm(accountId: string, bookings: Booking[], now: Date, defaultUser: User): BookingFormState {
+  const start = getDefaultBookingStartTime(accountId, bookings, now);
   const end = addHours(start, 4);
 
   return {
