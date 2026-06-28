@@ -9,12 +9,12 @@ type StatusBadgeProps = {
 export function StatusBadge({ row, now }: StatusBadgeProps) {
   if (row.runtime.kind === 'in_use' && row.current) {
     return (
-      <div className="grid w-full max-w-[215px] gap-1.5">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="grid w-full gap-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <Badge className="shrink-0" tone="blue">
             使用中
           </Badge>
-          <span className="min-w-0 truncate font-mono text-[13px] leading-5 tabular-nums text-[#4F5F77]">
+          <span className="whitespace-nowrap font-mono text-[13px] leading-5 tabular-nums text-[#4F5F77]">
             {formatBookingRange(row.current.startTime, row.current.endTime, now)}
           </span>
         </div>
@@ -25,14 +25,14 @@ export function StatusBadge({ row, now }: StatusBadgeProps) {
 
   if (row.next) {
     return (
-      <div className="grid w-full max-w-[215px] gap-1.5">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="grid w-full gap-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <Badge className="shrink-0" tone="green">
             空闲
           </Badge>
-          <span className="min-w-0 truncate font-mono text-[13px] leading-5 tabular-nums text-[#4F5F77]">现在可用</span>
+          <span className="whitespace-nowrap font-mono text-[13px] leading-5 tabular-nums text-[#4F5F77]">现在可用</span>
         </div>
-        <span className="truncate font-mono text-[13px] leading-5 tabular-nums text-[#667085]">
+        <span className="font-mono text-[13px] leading-5 tabular-nums text-[#667085]">
           下次 {formatBookingRange(row.next.startTime, row.next.endTime, now)}
         </span>
       </div>
@@ -40,7 +40,7 @@ export function StatusBadge({ row, now }: StatusBadgeProps) {
   }
 
   return (
-    <div className="flex w-full max-w-[215px] items-center gap-2">
+    <div className="flex w-full flex-wrap items-center gap-x-2 gap-y-1">
       <Badge className="shrink-0" tone="green">
         空闲
       </Badge>

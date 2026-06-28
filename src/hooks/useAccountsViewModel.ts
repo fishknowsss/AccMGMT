@@ -248,7 +248,7 @@ export function useAccountsViewModel() {
   }
 
   function openBooking(accountId: string) {
-    setBookingForm(createBookingForm(accountId, now, defaultUser));
+    setBookingForm(createBookingForm(accountId, bookings, now, defaultUser));
   }
 
   function openEditBooking(booking: Booking) {
@@ -888,8 +888,8 @@ function createUseNowForm(accountId: string, bookings: Booking[], now: Date, def
   };
 }
 
-function createBookingForm(accountId: string, now: Date, defaultUser: User): BookingFormState {
-  const start = roundToNextFiveMinutes(addHours(now, 1));
+export function createBookingForm(accountId: string, bookings: Booking[], now: Date, defaultUser: User): BookingFormState {
+  const start = getDefaultBookingStart(accountId, bookings, now);
   const end = addHours(start, 4);
 
   return {
@@ -902,6 +902,31 @@ function createBookingForm(accountId: string, now: Date, defaultUser: User): Boo
     endTime: toLocalInputValue(end),
     error: '',
   };
+}
+
+function getDefaultBookingStart(accountId: string, bookings: Booking[], now: Date): Date {
+  const runtime = getAccountRuntime(accountId, bookings, now);
+  if (runtime.current) {
+    return roundToNearestTenMinutesAtOrAfter(new Date(runtime.current.endTime));
+  }
+
+  return roundToNextFiveMinutes(addHours(now, 1));
+}
+
+function roundToNearestTenMinutesAtOrAfter(date: Date): Date {
+  const base = new Date(date);
+  base.setSeconds(0, 0);
+
+  const rounded = new Date(base);
+  const minutes = rounded.getMinutes();
+  const remainder = minutes % 10;
+  rounded.setMinutes(remainder < 5 ? minutes - remainder : minutes + (10 - remainder));
+
+  if (rounded.getTime() < base.getTime()) {
+    rounded.setMinutes(rounded.getMinutes() + 10);
+  }
+
+  return rounded;
 }
 
 function createEditBookingForm(booking: Booking): BookingFormState {
