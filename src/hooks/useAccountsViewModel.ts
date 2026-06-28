@@ -447,6 +447,15 @@ export function useAccountsViewModel() {
     }
   }
 
+  async function copyAccountPassword(password: string) {
+    try {
+      await navigator.clipboard.writeText(password);
+      setToast('密码已复制。');
+    } catch {
+      setToast('复制失败，请手动复制。');
+    }
+  }
+
   async function updateAccount(accountId: string, next: Partial<Pick<Account, 'email' | 'label' | 'renewalDate' | 'isActive'>>) {
     const account = accounts.find((item) => item.id === accountId);
     if (!account) {
@@ -799,6 +808,7 @@ export function useAccountsViewModel() {
     releaseBooking,
     findAvailableAccount,
     copyAccountEmail,
+    copyAccountPassword,
     updateAccount,
     createAccount,
     deleteAccount,

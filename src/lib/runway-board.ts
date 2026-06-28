@@ -1,6 +1,7 @@
 export type Account = {
   id: string;
   email: string;
+  password?: string | null;
   label: string;
   renewalDate: string;
   isActive: boolean;

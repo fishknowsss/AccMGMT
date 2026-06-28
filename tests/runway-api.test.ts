@@ -12,6 +12,7 @@ describe('mapCloudSnapshot', () => {
         {
           id: 'account-1',
           email: 'runway01@example.com',
+          password: 'secret-value',
           label: 'R-01',
           renewalDate: '2026-05-20',
           isActive: true,
@@ -52,6 +53,7 @@ describe('mapCloudSnapshot', () => {
     expect(snapshot.accounts[0]).toMatchObject({
       id: 'account-1',
       label: 'R-01',
+      password: 'secret-value',
       renewalDate: '2026-05-20',
       sortOrder: 1,
     });

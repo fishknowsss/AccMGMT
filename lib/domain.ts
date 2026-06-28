@@ -16,6 +16,7 @@ export type Group = {
 export type Account = {
   id: string;
   email: string;
+  password: string | null;
   label: string;
   renewalDate: string | null;
   isActive: boolean;

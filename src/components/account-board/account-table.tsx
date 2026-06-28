@@ -1,4 +1,4 @@
-import { CalendarPlus, Play, Square } from 'lucide-react';
+import { CalendarPlus, Copy, Play, Square } from 'lucide-react';
 import { canManageFutureBooking, formatBookingRange, type AccountRow, type Booking } from '../../lib/runway-board';
 import { Button } from '../ui/button';
 import { RenewalBadge } from './renewal-badge';
@@ -13,10 +13,11 @@ type AccountTableProps = {
   onEditBooking: (booking: Booking) => void;
   onCancelBooking: (booking: Booking) => void;
   onCopyEmail: (email: string) => void;
+  onCopyPassword: (password: string) => void;
   onRelease: (row: AccountRow) => void;
 };
 
-export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, onEditBooking, onCancelBooking, onCopyEmail, onRelease }: AccountTableProps) {
+export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, onEditBooking, onCancelBooking, onCopyEmail, onCopyPassword, onRelease }: AccountTableProps) {
   return (
     <section className="flex flex-col overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)] lg:min-h-0 lg:flex-1">
       <div className="flex shrink-0 items-center justify-between border-b border-[#E6EAF0] bg-[#FCFDFE] px-4 py-3">
@@ -36,6 +37,7 @@ export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, on
                 key={row.account.id}
                 now={now}
                 onCopyEmail={onCopyEmail}
+                onCopyPassword={onCopyPassword}
                 onCancelBooking={onCancelBooking}
                 onEditBooking={onEditBooking}
                 onRelease={onRelease}
@@ -50,10 +52,11 @@ export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, on
       </div>
 
       <div className="hidden min-h-0 flex-1 overflow-auto lg:block">
-        <table className="w-full min-w-[1260px] border-collapse text-left">
+        <table className="w-full min-w-[1400px] border-collapse text-left">
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-[#E7EAF0] bg-[#F7F9FB] text-[13px] font-semibold text-[#667085]">
-              <th className="w-[340px] px-4 py-3">账号</th>
+              <th className="w-[320px] px-4 py-3">账号</th>
+              <th className="w-[130px] px-4 py-3">密码</th>
               <th className="w-[245px] px-4 py-3">状态</th>
               <th className="w-[180px] px-4 py-3">当前使用</th>
               <th className="w-[260px] px-4 py-3">下一预约</th>
@@ -76,6 +79,18 @@ export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, on
                     </span>
                     <span className="min-w-0 truncate font-medium text-[#202329]">{row.account.email}</span>
                   </button>
+                </td>
+                <td className="h-[68px] px-4 py-0 align-middle">
+                  <Button
+                    disabled={!row.account.password}
+                    onClick={() => row.account.password && onCopyPassword(row.account.password)}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Copy size={14} />
+                    复制密码
+                  </Button>
                 </td>
                 <td className="h-[68px] px-4 py-0 align-middle">
                   <StatusBadge now={now} row={row} />
@@ -131,7 +146,7 @@ export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, on
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td className="h-28 px-4 text-center text-sm text-[#667080]" colSpan={6}>
+                <td className="h-28 px-4 text-center text-sm text-[#667080]" colSpan={7}>
                   调整筛选条件。
                 </td>
               </tr>
@@ -143,7 +158,7 @@ export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, on
   );
 }
 
-function AccountCard({ row, now, currentUserId, onUseNow, onReserve, onEditBooking, onCancelBooking, onCopyEmail, onRelease }: {
+function AccountCard({ row, now, currentUserId, onUseNow, onReserve, onEditBooking, onCancelBooking, onCopyEmail, onCopyPassword, onRelease }: {
   row: AccountRow;
   now: Date;
   currentUserId: string;
@@ -152,6 +167,7 @@ function AccountCard({ row, now, currentUserId, onUseNow, onReserve, onEditBooki
   onEditBooking: (booking: Booking) => void;
   onCancelBooking: (booking: Booking) => void;
   onCopyEmail: (email: string) => void;
+  onCopyPassword: (password: string) => void;
   onRelease: (row: AccountRow) => void;
 }) {
   const isInUse = row.runtime.kind === 'in_use';
@@ -169,6 +185,17 @@ function AccountCard({ row, now, currentUserId, onUseNow, onReserve, onEditBooki
         >
           <span className="block truncate text-[15px] font-medium text-[#202329]">{row.account.email}</span>
         </button>
+        <Button
+          className="shrink-0"
+          disabled={!row.account.password}
+          onClick={() => row.account.password && onCopyPassword(row.account.password)}
+          size="sm"
+          type="button"
+          variant="ghost"
+        >
+          <Copy size={13} />
+          复制密码
+        </Button>
       </div>
       <div className="mb-3">
         <StatusBadge now={now} row={row} />

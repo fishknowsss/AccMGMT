@@ -3,6 +3,7 @@ import { type Account, type Booking, type Group, type User } from './runway-boar
 export type CloudAccount = {
   id: string;
   email: string;
+  password?: string | null;
   label?: string | null;
   renewalDate: string | null;
   isActive: boolean;
@@ -57,6 +58,7 @@ export type BoardSnapshot = {
 
 export type AccountWritePayload = {
   email: string;
+  password?: string | null;
   label: string;
   renewalDate: string;
   isActive: boolean;
@@ -85,6 +87,7 @@ export function mapCloudSnapshot(snapshot: CloudSnapshot): BoardSnapshot {
     accounts: snapshot.accounts.map((account, index) => ({
       id: account.id,
       email: account.email,
+      password: account.password ?? null,
       label: account.label?.trim() || `R-${String(index + 1).padStart(2, '0')}`,
       renewalDate: account.renewalDate || todayDateInputValue(),
       isActive: account.isActive,
