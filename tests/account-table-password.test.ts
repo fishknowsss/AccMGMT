@@ -8,10 +8,6 @@ const accountTableSource = readFileSync(
   fileURLToPath(new URL('../src/components/account-board/account-table.tsx', import.meta.url)),
   'utf8',
 );
-const statusBadgeSource = readFileSync(
-  fileURLToPath(new URL('../src/components/account-board/status-badge.tsx', import.meta.url)),
-  'utf8',
-);
 
 describe('account table password actions', () => {
   it('uses an icon-only desktop password action without rendering password text', () => {
@@ -37,12 +33,5 @@ describe('account table password actions', () => {
     expect(accountTableSource).toContain('w-full max-w-full');
     expect(accountTableSource).toContain('truncate font-medium text-[#202329]');
     expect(accountTableSource).toContain('overflow-hidden');
-  });
-
-  it('gives the status column enough room and does not truncate status times', () => {
-    expect(accountTableSource).toContain('<th className="w-[30%] px-3 py-3">账号</th>');
-    expect(accountTableSource).toContain('<th className="w-[19%] px-2 py-3">状态</th>');
-    expect(statusBadgeSource).toContain('whitespace-nowrap font-mono');
-    expect(statusBadgeSource).not.toContain('truncate font-mono text-[13px] leading-5 tabular-nums text-[#4F5F77]');
   });
 });

@@ -502,16 +502,6 @@ export function canManageFutureBooking(booking: Booking | null, currentUserId: s
   return booking.userId === currentUserId && timestamp(booking.startTime) > now.getTime();
 }
 
-export function getDefaultBookingStartTime(accountId: string, bookings: Booking[], now = new Date()): Date {
-  const runtime = getAccountRuntime(accountId, bookings, now);
-
-  if (runtime.current) {
-    return roundToNearestTenMinutesAtOrAfter(new Date(runtime.current.endTime));
-  }
-
-  return roundToNextFiveMinutes(addHours(now, 1));
-}
-
 export function formatBookingRange(startTime: string, endTime: string, now = new Date()): string {
   return `${formatRelativeDay(startTime, now)} ${formatClock(startTime)}-${formatClock(endTime)}`;
 }
@@ -563,20 +553,6 @@ export function roundToNextFiveMinutes(date: Date): Date {
   const minutes = next.getMinutes();
   next.setMinutes(minutes + ((5 - (minutes % 5)) % 5));
   return next;
-}
-
-function roundToNearestTenMinutesAtOrAfter(date: Date): Date {
-  const rounded = new Date(date);
-  rounded.setSeconds(0, 0);
-  const minutes = rounded.getMinutes();
-  const remainder = minutes % 10;
-  rounded.setMinutes(minutes + (remainder >= 5 ? 10 - remainder : -remainder));
-
-  if (rounded.getTime() < date.getTime()) {
-    rounded.setMinutes(rounded.getMinutes() + 10);
-  }
-
-  return rounded;
 }
 
 export function addHours(date: Date, hours: number): Date {

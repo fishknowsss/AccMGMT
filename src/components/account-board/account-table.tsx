@@ -54,9 +54,9 @@ export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, on
         <table className="w-full table-fixed border-collapse text-left">
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-[#E7EAF0] bg-[#F7F9FB] text-[13px] font-semibold text-[#667085]">
-              <th className="w-[30%] px-3 py-3">账号</th>
+              <th className="w-[34%] px-3 py-3">账号</th>
               <th className="w-[72px] px-2 py-3 text-center">密码</th>
-              <th className="w-[19%] px-2 py-3">状态</th>
+              <th className="w-[15%] px-2 py-3">状态</th>
               <th className="w-[17%] px-2 py-3">当前使用</th>
               <th className="w-[18%] px-2 py-3">下一预约</th>
               <th className="w-[128px] px-2 py-3 text-right">操作</th>

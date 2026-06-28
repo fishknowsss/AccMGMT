@@ -6,7 +6,6 @@ import {
   formatUsageDuration,
   findBookingConflict,
   fromLocalInputValue,
-  getDefaultBookingStartTime,
   getActiveGroups,
   getActiveUsers,
   getAccountRuntime,
@@ -138,29 +137,6 @@ describe('findBookingConflict', () => {
     );
 
     expect(conflict).toBeNull();
-  });
-});
-
-describe('getDefaultBookingStartTime', () => {
-  it('starts a booking after the active booking ends on the next rounded ten-minute mark', () => {
-    const start = getDefaultBookingStartTime(
-      'account-1',
-      [
-        booking({
-          startTime: '2026-05-09T09:00:00.000Z',
-          endTime: '2026-05-09T10:54:00.000Z',
-        }),
-      ],
-      now,
-    );
-
-    expect(start.toISOString()).toBe('2026-05-09T11:00:00.000Z');
-  });
-
-  it('keeps the existing one-hour default for idle accounts', () => {
-    const start = getDefaultBookingStartTime('account-1', [], new Date('2026-05-09T10:02:00.000Z'));
-
-    expect(start.toISOString()).toBe('2026-05-09T11:05:00.000Z');
   });
 });
 
