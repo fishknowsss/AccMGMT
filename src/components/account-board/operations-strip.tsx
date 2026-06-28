@@ -1,4 +1,4 @@
-import { Activity, CalendarCheck, CircleCheck, Clock3, RefreshCcw } from 'lucide-react';
+import { Activity, CalendarCheck, CircleCheck, Clock3 } from 'lucide-react';
 import { getOccupancyPercent } from '../../lib/board-navigation';
 import { type AccountsView } from '../../lib/runway-board';
 
@@ -36,15 +36,12 @@ export function OperationsStrip({ stats }: OperationsStripProps) {
           {stats.todayBookings > 0 && (
             <span className="rounded-md bg-[#EEF2F6] px-1.5 py-0.5">{stats.todayBookings} 预约</span>
           )}
-          {stats.renewalSoon > 0 && (
-            <span className="rounded-md bg-[#FDF5E6] px-1.5 py-0.5 text-[#92400E]">{stats.renewalSoon} 续费</span>
-          )}
         </div>
       </section>
 
       {/* Desktop: full card */}
       <section className="hidden lg:block shrink-0 overflow-hidden rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] shadow-[0_10px_26px_rgba(52,64,84,0.05)]" aria-label="账号概览">
-      <div className="grid gap-0 lg:grid-cols-[minmax(360px,1fr)_minmax(520px,1.2fr)]">
+      <div className="grid gap-0 lg:grid-cols-[minmax(360px,1fr)_minmax(390px,0.95fr)]">
         <div className="border-b border-[#E6EAF0] px-4 py-3 lg:border-b-0 lg:border-r">
           <div className="mb-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
@@ -73,11 +70,10 @@ export function OperationsStrip({ stats }: OperationsStripProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 divide-x divide-y divide-[#E6EAF0] sm:grid-cols-4 sm:divide-y-0">
+        <div className="grid grid-cols-3 divide-x divide-[#E6EAF0]">
           <Metric icon={CircleCheck} label="空闲账号" value={stats.idle} />
           <Metric icon={Clock3} label="使用中" value={stats.inUse} />
           <Metric icon={CalendarCheck} label="今日预约" value={stats.todayBookings} />
-          <Metric icon={RefreshCcw} label="7天内续费" value={stats.renewalSoon} />
         </div>
       </div>
       </section>

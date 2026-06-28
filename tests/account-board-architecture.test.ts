@@ -70,4 +70,10 @@ describe('account board architecture', () => {
     expect(accountBoardSource).toContain("function AccountEditor({ account, onDelete, onSave }");
     expect(accountBoardSource).toContain('删除账号');
   });
+
+  it('does not show renewal management in the Pixverse UI', () => {
+    expect(accountBoardSource).not.toContain('7天内续费');
+    expect(accountBoardSource).not.toContain('续费日期');
+    expect(accountBoardSource).not.toContain('Field label="续费日期"');
+  });
 });

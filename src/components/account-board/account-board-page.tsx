@@ -77,7 +77,7 @@ export function AccountBoardPage() {
 
   return (
     <div className="min-h-dvh bg-[#F6F7F9] text-[#202329] lg:h-screen lg:min-h-0 lg:overflow-hidden">
-      <div className="relative mx-auto flex w-full max-w-[1440px] gap-4 px-3 py-3 pb-6 sm:px-4 sm:py-4 lg:h-full lg:px-6 lg:pb-4">
+      <div className="relative mx-auto flex w-full max-w-[1760px] gap-4 px-3 py-3 pb-6 sm:px-4 sm:py-4 lg:h-full lg:px-5 lg:pb-4">
         <aside className="hidden w-[76px] shrink-0 lg:block">
           <div className="sticky top-4 flex h-[calc(100vh-2rem)] flex-col items-center rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] p-3 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#1C2430] text-sm font-semibold text-white">AM</div>
@@ -472,11 +472,10 @@ function AccountPoolSummary({ model, onDeveloperTap }: { model: BoardModel; onDe
         </div>
         <div className="font-mono text-sm tabular-nums text-[#667085]">app.pixverse.ai</div>
       </div>
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-3">
         <ReadonlySetting label="账号总数" value={`${model.accounts.length} 个`} onClick={onDeveloperTap} />
         <ReadonlySetting label="启用账号" value={`${activeAccounts} 个`} />
         <ReadonlySetting label="使用中" value={`${model.view.stats.inUse} 个`} />
-        <ReadonlySetting label="7天内续费" value={`${model.view.stats.renewalSoon} 个`} />
       </div>
     </section>
   );
@@ -490,10 +489,9 @@ function AccountEditorSection({ model }: { model: BoardModel }) {
         <span className="font-mono text-sm tabular-nums text-[#667085]">{model.accounts.length} 个账号</span>
       </div>
       <AccountCreator getDefaultDraft={model.getEmptyAccountDraft} onCreate={model.createAccount} />
-      <div className="hidden grid-cols-[110px_minmax(260px,1fr)_160px_120px_40px] border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-3 text-sm font-medium text-[#667085] xl:grid">
+      <div className="hidden grid-cols-[110px_minmax(260px,1fr)_120px_40px] border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-3 text-sm font-medium text-[#667085] xl:grid">
         <div>编号</div>
         <div>账号邮箱</div>
-        <div>续费日期</div>
         <div>状态</div>
         <div />
       </div>
@@ -547,15 +545,12 @@ function AccountCreator({ getDefaultDraft, onCreate }: { getDefaultDraft: BoardM
 
   return (
     <section className="grid gap-4 border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-4">
-      <div className="grid gap-3 xl:grid-cols-[110px_minmax(260px,1fr)_170px_150px]">
+      <div className="grid gap-3 xl:grid-cols-[110px_minmax(260px,1fr)_150px]">
         <Field label="编号">
           <Input value={draft.label} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
         </Field>
         <Field label="账号邮箱">
           <Input value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
-        </Field>
-        <Field label="续费日期">
-          <Input type="date" value={draft.renewalDate} onChange={(event) => setDraft({ ...draft, renewalDate: event.target.value })} />
         </Field>
         <label className="flex items-end gap-2 pb-2 text-sm font-medium text-[#344154]">
           <input
@@ -632,10 +627,9 @@ function AccountEditor({ account, onDelete, onSave }: { account: Account; onDele
   }
 
   return (
-    <article className="grid gap-3 px-5 py-4 xl:grid-cols-[110px_minmax(260px,1fr)_160px_120px_40px] xl:items-center">
+    <article className="grid gap-3 px-5 py-4 xl:grid-cols-[110px_minmax(260px,1fr)_120px_40px] xl:items-center">
       <Input value={draft.label} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
       <Input value={draft.email} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
-      <Input type="date" value={draft.renewalDate} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, renewalDate: event.target.value })} />
       <label className="flex items-center gap-2 text-sm font-medium text-[#344154]">
         <input
           checked={draft.isActive}

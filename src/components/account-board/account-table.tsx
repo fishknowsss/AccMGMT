@@ -1,7 +1,6 @@
 import { CalendarPlus, Copy, Play, Square } from 'lucide-react';
 import { canManageFutureBooking, formatBookingRange, type AccountRow, type Booking } from '../../lib/runway-board';
 import { Button } from '../ui/button';
-import { RenewalBadge } from './renewal-badge';
 import { StatusBadge } from './status-badge';
 
 type AccountTableProps = {
@@ -51,23 +50,22 @@ export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, on
         )}
       </div>
 
-      <div className="hidden min-h-0 flex-1 overflow-auto lg:block">
-        <table className="w-full min-w-[1400px] border-collapse text-left">
+      <div className="hidden min-h-0 flex-1 overflow-y-auto overflow-x-hidden lg:block">
+        <table className="w-full table-fixed border-collapse text-left">
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-[#E7EAF0] bg-[#F7F9FB] text-[13px] font-semibold text-[#667085]">
-              <th className="w-[320px] px-4 py-3">账号</th>
-              <th className="w-[130px] px-4 py-3">密码</th>
-              <th className="w-[245px] px-4 py-3">状态</th>
-              <th className="w-[180px] px-4 py-3">当前使用</th>
-              <th className="w-[260px] px-4 py-3">下一预约</th>
-              <th className="w-[135px] px-4 py-3">续费日期</th>
-              <th className="w-[170px] px-4 py-3 text-right">操作</th>
+              <th className="w-[32%] px-3 py-3">账号</th>
+              <th className="w-[56px] px-2 py-3 text-center">密码</th>
+              <th className="w-[17%] px-3 py-3">状态</th>
+              <th className="w-[16%] px-3 py-3">当前使用</th>
+              <th className="w-[17%] px-3 py-3">下一预约</th>
+              <th className="w-[142px] px-3 py-3 text-right">操作</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr className="group h-[68px] border-b border-[#EEF2F6] last:border-0 hover:bg-[#FAFBFC]" key={row.account.id}>
-                <td className="relative h-[68px] px-4 py-0">
+                <td className="relative h-[68px] px-3 py-0">
                   <span className={`absolute left-0 top-[13px] h-[42px] w-[3px] rounded-r-full ${getAccountAccentClass(row)}`} />
                   <button
                     className="flex h-full min-w-0 items-center gap-3 rounded-lg px-1 text-left transition hover:bg-[#EEF4FA]"
@@ -80,22 +78,22 @@ export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, on
                     <span className="min-w-0 truncate font-medium text-[#202329]">{row.account.email}</span>
                   </button>
                 </td>
-                <td className="h-[68px] px-4 py-0 align-middle">
+                <td className="h-[68px] px-2 py-0 text-center align-middle">
                   <Button
+                    aria-label="复制密码"
                     disabled={!row.account.password}
                     onClick={() => row.account.password && onCopyPassword(row.account.password)}
-                    size="sm"
+                    size="icon"
                     type="button"
                     variant="ghost"
                   >
                     <Copy size={14} />
-                    复制密码
                   </Button>
                 </td>
-                <td className="h-[68px] px-4 py-0 align-middle">
+                <td className="h-[68px] px-3 py-0 align-middle">
                   <StatusBadge now={now} row={row} />
                 </td>
-                <td className="h-[68px] px-4 py-0 align-middle">
+                <td className="h-[68px] px-3 py-0 align-middle">
                   {row.current ? (
                     <div className="grid min-w-0 gap-1">
                       <span className="truncate font-medium text-[#202329]">{row.current.user?.name ?? '未知成员'}</span>
@@ -107,7 +105,7 @@ export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, on
                     <span className="text-sm text-[#8A93A3]">暂无占用</span>
                   )}
                 </td>
-                <td className="h-[68px] px-4 py-0 align-middle">
+                <td className="h-[68px] px-3 py-0 align-middle">
                   {row.next ? (
                     <NextBookingSummary
                       booking={row.next}
@@ -120,10 +118,7 @@ export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, on
                     <span className="text-sm text-[#8A93A3]">暂无预约</span>
                   )}
                 </td>
-                <td className="h-[68px] px-4 py-0 align-middle">
-                  <RenewalBadge date={row.account.renewalDate} state={row.renewalState} />
-                </td>
-                <td className="h-[68px] px-4 py-0 align-middle">
+                <td className="h-[68px] px-3 py-0 align-middle">
                   <div className="flex justify-end gap-2 whitespace-nowrap opacity-90 transition group-hover:opacity-100">
                     {row.runtime.kind === 'in_use' ? (
                       <Button disabled={!row.canRelease || !row.current} onClick={() => onRelease(row)} size="sm" type="button" variant="subtle">
@@ -146,7 +141,7 @@ export function AccountTable({ rows, now, currentUserId, onUseNow, onReserve, on
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td className="h-28 px-4 text-center text-sm text-[#667080]" colSpan={7}>
+                <td className="h-28 px-4 text-center text-sm text-[#667080]" colSpan={6}>
                   调整筛选条件。
                 </td>
               </tr>
@@ -187,14 +182,14 @@ function AccountCard({ row, now, currentUserId, onUseNow, onReserve, onEditBooki
         </button>
         <Button
           className="shrink-0"
+          aria-label="复制密码"
           disabled={!row.account.password}
           onClick={() => row.account.password && onCopyPassword(row.account.password)}
-          size="sm"
+          size="icon"
           type="button"
           variant="ghost"
         >
           <Copy size={13} />
-          复制密码
         </Button>
       </div>
       <div className="mb-3">
@@ -219,7 +214,7 @@ function AccountCard({ row, now, currentUserId, onUseNow, onReserve, onEditBooki
         </div>
       ) : null}
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {isInUse ? (
           <Button disabled={!row.canRelease || !row.current} onClick={() => onRelease(row)} size="sm" type="button" variant="subtle">
             <Square size={13} />
@@ -235,9 +230,6 @@ function AccountCard({ row, now, currentUserId, onUseNow, onReserve, onEditBooki
           <CalendarPlus size={13} />
           预约
         </Button>
-        <div className="ml-auto">
-          <RenewalBadge date={row.account.renewalDate} state={row.renewalState} />
-        </div>
       </div>
     </div>
   );

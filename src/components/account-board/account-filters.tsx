@@ -54,15 +54,6 @@ export function AccountFilters({ filters, groups, onChange, onFindAvailable }: A
             </option>
           ))}
         </Select>
-        <Select
-          className="border-transparent bg-[#F3F6F9] xl:w-[150px] xl:flex-none"
-          onChange={(event) => onChange({ renewal: event.target.value as AccountFiltersState['renewal'] })}
-          value={filters.renewal}
-        >
-          <option value="all">全部续费</option>
-          <option value="7d">7天内</option>
-          <option value="30d">30天内</option>
-        </Select>
         <Button className="justify-center rounded-lg px-4 sm:col-span-2 xl:w-auto" onClick={onFindAvailable} type="button" variant="primary">
           <Wand2 size={15} />
           找可用
