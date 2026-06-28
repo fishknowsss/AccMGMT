@@ -1,5 +1,5 @@
-import { Check, ChevronDown, FolderOpen, History, LayoutDashboard, Settings, Trash2, UserRound, UsersRound } from 'lucide-react';
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { Check, ChevronDown, LayoutDashboard, Settings, Trash2, UserRound, UsersRound } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAccountsViewModel, type AccountDraftState } from '../../hooks/useAccountsViewModel';
 import { boardSections, getBoardSectionMeta, type BoardSection } from '../../lib/board-navigation';
 import { advanceDeveloperSequence, advanceDeveloperTapCount, canUseDeveloperShortcut, normalizeDeveloperKey } from '../../lib/developer-mode';
@@ -12,14 +12,11 @@ import { OperationsStrip } from './operations-strip';
 import { Button } from '../ui/button';
 import { Field, Input } from '../ui/field';
 import { UseNowDialog } from './use-now-dialog';
-import { UsageRecordsPanel } from './usage-records-panel';
 
 const sectionIcons = {
   board: LayoutDashboard,
   accounts: Settings,
   groups: UsersRound,
-  projects: FolderOpen,
-  records: History,
 } satisfies Record<BoardSection, React.FC<{ size?: number; className?: string }>>;
 
 const primarySections = boardSections.filter((section) => section.id !== 'accounts');
@@ -116,7 +113,7 @@ export function AccountBoardPage() {
                 <div>
                   <div className="mb-2 flex items-center gap-2">
                     <span className="rounded-md bg-[#E8EDF3] px-2 py-1 text-sm font-medium text-[#344154]">{activeMeta.shortLabel}</span>
-                    <span className="font-mono text-sm tabular-nums text-[#667085]">Runway Unlimited / $95</span>
+                    <span className="font-mono text-sm tabular-nums text-[#667085]">app.pixverse.ai</span>
                     {developerMode ? <span className="rounded-md bg-[#1C2430] px-2 py-1 text-sm font-medium text-white">编辑模式</span> : null}
                   </div>
                   <h1 className="text-[28px] font-semibold leading-tight tracking-normal text-[#15171B]">{activeMeta.label}</h1>
@@ -149,7 +146,7 @@ export function AccountBoardPage() {
             </nav>
           </div>
 
-          <section className={cn('min-h-0 flex-1', ['board', 'groups', 'records'].includes(activeSection) ? 'flex flex-col gap-3 overflow-hidden sm:gap-4' : 'overflow-y-auto overflow-x-hidden pr-1')}>
+          <section className={cn('min-h-0 flex-1', ['board', 'groups'].includes(activeSection) ? 'flex flex-col gap-3 overflow-hidden sm:gap-4' : 'overflow-y-auto overflow-x-hidden pr-1')}>
             {activeSection === 'board' ? (
               model.isLoading ? (
                 <BoardLoadingState />
@@ -169,6 +166,7 @@ export function AccountBoardPage() {
                 onEditBooking={model.openEditBooking}
                 onCancelBooking={model.cancelBooking}
                 onCopyEmail={model.copyAccountEmail}
+                onCopyPassword={model.copyAccountPassword}
                 onUseNow={model.openUseNow}
                 currentUserId={model.currentUserId}
                 rows={model.view.rows}
@@ -176,8 +174,6 @@ export function AccountBoardPage() {
             ) : null}
             {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} onDeveloperTap={handleDeveloperTap} /> : null}
             {activeSection === 'groups' ? <MemberGroupsPanel developerMode={developerMode} model={model} /> : null}
-            {activeSection === 'projects' ? <ProjectsPanel developerMode={developerMode} model={model} /> : null}
-            {activeSection === 'records' ? <UsageRecordsPanel now={model.now} view={model.recordsView} /> : null}
           </section>
         </main>
       </div>
@@ -465,143 +461,6 @@ function SiteSettingsPanel({ developerMode, model, onDeveloperTap }: { developer
   );
 }
 
-function ProjectsPanel({ developerMode, model }: { developerMode: boolean; model: BoardModel }) {
-  const { projects } = model;
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
-      {developerMode ? <ProjectCreator onCreate={model.createProject} /> : null}
-      {projects.length ? (
-        <ul className="divide-y divide-[#EEF2F6]">
-          {projects.map((p) => (
-            <ProjectRow developerMode={developerMode} key={p} name={p} onDelete={model.deleteProject} onRename={model.renameProject} />
-          ))}
-        </ul>
-      ) : (
-        <div className="px-5 py-10 text-center text-sm text-[#667085]">{developerMode ? '输入项目名后新增。' : '暂无项目。'}</div>
-      )}
-    </div>
-  );
-}
-
-function ProjectRow({
-  developerMode,
-  name,
-  onDelete,
-  onRename,
-}: {
-  developerMode: boolean;
-  name: string;
-  onDelete: BoardModel['deleteProject'];
-  onRename: BoardModel['renameProject'];
-}) {
-  const [draft, setDraft] = useState(name);
-  const [error, setError] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-
-  async function handleSave() {
-    setError('');
-    setIsSaving(true);
-    const result = await onRename(name, draft);
-    setIsSaving(false);
-    if (result.ok) {
-      setIsEditing(false);
-      return;
-    }
-    setError(result.reason);
-  }
-
-  async function handleDelete() {
-    setError('');
-    setIsSaving(true);
-    const result = await onDelete(name);
-    setIsSaving(false);
-    if (!result.ok) {
-      setError(result.reason);
-    }
-  }
-
-  function handleCancel() {
-    setDraft(name);
-    setError('');
-    setIsEditing(false);
-  }
-
-  if (!developerMode) {
-    return (
-      <li className="flex min-h-[52px] items-center gap-2 px-5 py-3">
-        <span className="flex-1 text-sm text-[#344154]">{name}</span>
-      </li>
-    );
-  }
-
-  return (
-    <li className="grid min-h-[60px] gap-2 px-5 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-      <div className="grid gap-1.5">
-        {isEditing ? (
-          <Input aria-label="项目名" onChange={(event) => setDraft(event.target.value)} value={draft} />
-        ) : (
-          <span className="flex min-h-9 items-center text-sm text-[#344154]">{name}</span>
-        )}
-        {error ? <div className="text-sm text-[#B42318]">{error}</div> : null}
-      </div>
-      <div className="flex items-center gap-2">
-        {isEditing ? (
-          <>
-            <Button disabled={isSaving} onClick={handleSave} size="sm" type="button" variant="primary">
-              保存
-            </Button>
-            <Button disabled={isSaving} onClick={handleCancel} size="sm" type="button">
-              取消
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button disabled={isSaving} onClick={() => setIsEditing(true)} size="sm" type="button">
-              编辑
-            </Button>
-            <Button disabled={isSaving} onClick={handleDelete} size="sm" type="button" variant="ghost">
-              删除
-            </Button>
-          </>
-        )}
-      </div>
-    </li>
-  );
-}
-
-function ProjectCreator({ onCreate }: { onCreate: BoardModel['createProject'] }) {
-  const [name, setName] = useState('');
-  const [error, setError] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError('');
-    setIsSaving(true);
-    const result = await onCreate(name);
-    setIsSaving(false);
-    if (result.ok) {
-      setName('');
-      return;
-    }
-    setError(result.reason);
-  }
-
-  return (
-    <form className="grid gap-2 border-b border-[#E6EAF0] bg-[#FCFDFE] px-5 py-4 sm:grid-cols-[minmax(0,1fr)_80px] sm:items-start" onSubmit={handleSubmit}>
-      <div className="grid gap-1.5">
-        <Input aria-label="项目名" onChange={(event) => setName(event.target.value)} placeholder="项目名" value={name} />
-        {error ? <div className="text-sm text-[#B42318]">{error}</div> : null}
-      </div>
-      <Button disabled={isSaving} type="submit" variant="primary">
-        新增
-      </Button>
-    </form>
-  );
-}
-
 function AccountPoolSummary({ model, onDeveloperTap }: { model: BoardModel; onDeveloperTap: () => void }) {
   const activeAccounts = model.accounts.filter((account) => account.isActive).length;
 
@@ -611,7 +470,7 @@ function AccountPoolSummary({ model, onDeveloperTap }: { model: BoardModel; onDe
         <div>
           <h2 className="text-base font-semibold text-[#171A1F]">账号池</h2>
         </div>
-        <div className="font-mono text-sm tabular-nums text-[#667085]">Runway Unlimited / $95</div>
+        <div className="font-mono text-sm tabular-nums text-[#667085]">app.pixverse.ai</div>
       </div>
       <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
         <ReadonlySetting label="账号总数" value={`${model.accounts.length} 个`} onClick={onDeveloperTap} />

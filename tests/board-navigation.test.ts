@@ -7,16 +7,14 @@ import {
 } from '../src/lib/board-navigation';
 
 describe('board navigation', () => {
-  it('defines reachable sections for board, account settings, member groups, projects, and records', () => {
-    expect(boardSections.map((section) => section.id)).toEqual<BoardSection[]>(['board', 'groups', 'projects', 'records', 'accounts']);
+  it('defines only the live account board, member groups, and account settings sections', () => {
+    expect(boardSections.map((section) => section.id)).toEqual<BoardSection[]>(['board', 'groups', 'accounts']);
   });
 
   it('returns concise Chinese labels for every section', () => {
     expect(getBoardSectionMeta('board').label).toBe('账号使用与管理面板');
     expect(getBoardSectionMeta('accounts').label).toBe('账号设置');
     expect(getBoardSectionMeta('groups').label).toBe('成员小组');
-    expect(getBoardSectionMeta('projects').label).toBe('项目列表');
-    expect(getBoardSectionMeta('records').label).toBe('使用记录');
   });
 });
 

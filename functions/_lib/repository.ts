@@ -3,6 +3,7 @@ import type { Account, Booking, BookingDraft, Group, User } from '../../lib/doma
 type AccountRow = {
   id: string;
   email: string;
+  password: string | null;
   label: string;
   renewal_date: string | null;
   is_active: number;
@@ -40,8 +41,8 @@ type GroupRow = {
 
 export type D1Repository = {
   listSnapshot(): Promise<{ accounts: Account[]; bookings: Booking[]; users: User[]; groups: Group[]; projects: string[] }>;
-  createAccount(input: { email: string; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number }): Promise<Account>;
-  updateAccount(id: string, input: { email: string; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number }): Promise<Account | null>;
+  createAccount(input: { email: string; password?: string | null; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number }): Promise<Account>;
+  updateAccount(id: string, input: { email: string; password?: string | null; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number }): Promise<Account | null>;
   deleteAccount(id: string): Promise<boolean>;
   createBooking(input: BookingDraft): Promise<Booking>;
   updateFutureBooking(id: string, input: BookingDraft, now: string): Promise<Booking | null>;
@@ -64,7 +65,7 @@ export function createRepository(db: D1Database): D1Repository {
   return {
     async listSnapshot() {
       const [accountsResult, bookingsResult, usersResult, groupsResult, projectsResult] = await Promise.all([
-        db.prepare('SELECT id, email, label, renewal_date, is_active, sort_order, created_at FROM accounts ORDER BY sort_order ASC, email ASC').all<AccountRow>(),
+        db.prepare('SELECT id, email, password, label, renewal_date, is_active, sort_order, created_at FROM accounts ORDER BY sort_order ASC, email ASC').all<AccountRow>(),
         db
           .prepare(
             `SELECT id, account_id, user_name, group_name, project_name, start_at, end_at, released_at, created_at
@@ -91,8 +92,8 @@ export function createRepository(db: D1Database): D1Repository {
     async createAccount(input) {
       const id = crypto.randomUUID();
       await db
-        .prepare('INSERT INTO accounts (id, email, label, renewal_date, is_active, sort_order) VALUES (?1, ?2, ?3, ?4, ?5, ?6)')
-        .bind(id, input.email, input.label, input.renewalDate, input.isActive ? 1 : 0, input.sortOrder)
+        .prepare('INSERT INTO accounts (id, email, password, label, renewal_date, is_active, sort_order) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
+        .bind(id, input.email, input.password ?? null, input.label, input.renewalDate, input.isActive ? 1 : 0, input.sortOrder)
         .run();
 
       const account = await getAccountById(db, id);
@@ -104,8 +105,8 @@ export function createRepository(db: D1Database): D1Repository {
 
     async updateAccount(id, input) {
       await db
-        .prepare('UPDATE accounts SET email = ?1, label = ?2, renewal_date = ?3, is_active = ?4, sort_order = ?5 WHERE id = ?6')
-        .bind(input.email, input.label, input.renewalDate, input.isActive ? 1 : 0, input.sortOrder, id)
+        .prepare('UPDATE accounts SET email = ?1, password = ?2, label = ?3, renewal_date = ?4, is_active = ?5, sort_order = ?6 WHERE id = ?7')
+        .bind(input.email, input.password ?? null, input.label, input.renewalDate, input.isActive ? 1 : 0, input.sortOrder, id)
         .run();
 
       return getAccountById(db, id);
@@ -314,7 +315,7 @@ export function createRepository(db: D1Database): D1Repository {
 
 async function getAccountById(db: D1Database, id: string): Promise<Account | null> {
   const row = await db
-    .prepare('SELECT id, email, label, renewal_date, is_active, sort_order, created_at FROM accounts WHERE id = ?1')
+    .prepare('SELECT id, email, password, label, renewal_date, is_active, sort_order, created_at FROM accounts WHERE id = ?1')
     .bind(id)
     .first<AccountRow>();
 
@@ -338,6 +339,7 @@ function mapAccount(row: AccountRow): Account {
   return {
     id: row.id,
     email: row.email,
+    password: row.password,
     label: row.label,
     renewalDate: row.renewal_date,
     isActive: Boolean(row.is_active),

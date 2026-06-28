@@ -10,10 +10,10 @@
     "local": "node scripts/open-preview.mjs",
     "test": "vitest run",
     "lint": "tsc --noEmit",
-    "cf:dev": "npm run build && wrangler pages dev dist --d1 DB=accmgmt",
-    "cf:migrate:local": "wrangler d1 migrations apply accmgmt --local",
-    "cf:migrate": "wrangler d1 migrations apply accmgmt --remote",
-    "cf:deploy": "npm run build && wrangler pages deploy dist --project-name accmgmt"
+    "cf:dev": "npm run build && wrangler pages dev dist --d1 DB=accmgmt-pixverse",
+    "cf:migrate:local": "wrangler d1 migrations apply accmgmt-pixverse --local",
+    "cf:migrate": "wrangler d1 migrations apply accmgmt-pixverse --remote",
+    "cf:deploy": "npm run build && wrangler pages deploy dist --project-name accmgmt-pixverse"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",

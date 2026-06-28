@@ -1,9 +1,9 @@
-name = "accmgmt"
+name = "accmgmt-pixverse"
 pages_build_output_dir = "dist"
 compatibility_date = "2026-05-09"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "accmgmt"
-database_id = "f9430df1-a23e-4ba8-9f8b-55cb97d2b9ae"
-preview_database_id = "accmgmt"
+database_name = "accmgmt-pixverse"
+database_id = "88775c30-6f67-45e8-b8bc-9492240b7279"
+preview_database_id = "accmgmt-pixverse"

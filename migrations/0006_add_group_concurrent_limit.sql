@@ -1,1 +1,3 @@
-ALTER TABLE groups ADD COLUMN concurrent_limit INTEGER NOT NULL DEFAULT 2;
+-- Kept for migration order compatibility. Fresh schemas already add this
+-- column in 0005_add_users_groups.sql.
+SELECT 1;

@@ -34,12 +34,12 @@ export function createMockSnapshot(now = new Date()): MockSnapshot {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
 
-  const accounts: Account[] = runwayAccountEmails.map((email, index) => {
+  const accounts: Account[] = pixverseAccountEmails.map((email, index) => {
     const number = index + 1;
     return {
       id: `account-${number}`,
       email,
-      label: `R-${String(number).padStart(2, '0')}`,
+      label: `P-${String(number).padStart(2, '0')}`,
       renewalDate: defaultRenewalDate,
       isActive: true,
       sortOrder: number,
@@ -125,31 +125,31 @@ export function createMockSnapshot(now = new Date()): MockSnapshot {
   };
 }
 
-export const runwayAccountEmails = [
-  'RaeLopez75097@outlook.com',
-  'GabrielleShell101444@outlook.com',
-  'JoanneMerino63875@outlook.com',
-  'GraceCain80741@outlook.com',
-  'KfocahZmlscy479999@outlook.com',
-  'GlendaMattice85518@outlook.com',
-  'AnnaWalzer8658@outlook.com',
-  'TcbmwXhat6440@outlook.com',
-  'PknhQebpiv097920@outlook.com',
-  'KennethHernandez74421@outlook.com',
-  'JosephDillon7994@outlook.com',
-  'LjrhDkubg843141@outlook.com',
-  'NicoleHale0973@outlook.com',
-  'DorothyNicolaou372942@outlook.com',
-  'MznofEdayye28106@outlook.com',
-  'LesterJohnson3767@outlook.com',
-  'UqltxxWtzxy8813@outlook.com',
-  'EmilyPaez1015@outlook.com',
-  'XpmfdlAjrbp706588@outlook.com',
-  'XycixrQhcvk991241@outlook.com',
-  'RichardCarter205621@outlook.com',
-  'FwlwbTankv91206@outlook.com',
-  'JamesHowell244774@outlook.com',
-  'LeonaCox646320@outlook.com',
+export const pixverseAccountEmails = [
+  'pixverse01@studio.local',
+  'pixverse02@studio.local',
+  'pixverse03@studio.local',
+  'pixverse04@studio.local',
+  'pixverse05@studio.local',
+  'pixverse06@studio.local',
+  'pixverse07@studio.local',
+  'pixverse08@studio.local',
+  'pixverse09@studio.local',
+  'pixverse10@studio.local',
+  'pixverse11@studio.local',
+  'pixverse12@studio.local',
+  'pixverse13@studio.local',
+  'pixverse14@studio.local',
+  'pixverse15@studio.local',
+  'pixverse16@studio.local',
+  'pixverse17@studio.local',
+  'pixverse18@studio.local',
+  'pixverse19@studio.local',
+  'pixverse20@studio.local',
+  'pixverse21@studio.local',
+  'pixverse22@studio.local',
+  'pixverse23@studio.local',
+  'pixverse24@studio.local',
 ] as const;
 
 const defaultRenewalDate = '2026-06-01';
