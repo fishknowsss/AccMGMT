@@ -17,12 +17,12 @@ export function UsageRecordsPanel({ view, now }: UsageRecordsPanelProps) {
     <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
       <UsageRecordsSummary stats={view.stats} />
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
-        <div className="flex shrink-0 flex-col gap-3 border-b border-[#E6EAF0] bg-[#FCFDFE] px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex shrink-0 flex-col gap-3 border-b border-[#E6EAF0] bg-[#FCFDFE] px-4 py-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-center gap-3">
             <h2 className="text-base font-semibold text-[#171A1F]">使用记录</h2>
             <span className="font-mono text-sm tabular-nums text-[#667085]">{records.length} 条</span>
           </div>
-          <label className="relative w-full lg:w-[320px]">
+          <label className="relative w-full xl:w-[320px]">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8191A6]" size={16} />
             <Input
               aria-label="搜索记录"
@@ -34,7 +34,7 @@ export function UsageRecordsPanel({ view, now }: UsageRecordsPanelProps) {
           </label>
         </div>
 
-        <div className="lg:hidden">
+        <div className="xl:hidden">
           {records.length ? (
             <div className="divide-y divide-[#EEF2F6]">
               {records.map((record) => (
@@ -46,7 +46,7 @@ export function UsageRecordsPanel({ view, now }: UsageRecordsPanelProps) {
           )}
         </div>
 
-        <div className="hidden min-h-0 flex-1 overflow-auto lg:block">
+        <div className="hidden min-h-0 flex-1 overflow-auto xl:block">
           <table className="w-full min-w-[1120px] border-collapse text-left">
             <thead className="sticky top-0 z-10">
               <tr className="border-b border-[#E7EAF0] bg-[#F7F9FB] text-[13px] font-semibold text-[#667085]">

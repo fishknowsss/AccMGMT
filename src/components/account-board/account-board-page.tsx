@@ -1,4 +1,4 @@
-import { Check, ChevronDown, LayoutDashboard, Settings, Trash2, UserRound, UsersRound } from 'lucide-react';
+import { Check, ChevronDown, FolderOpen, History, LayoutDashboard, Settings, Trash2, UserRound, UsersRound } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAccountsViewModel, type AccountDraftState } from '../../hooks/useAccountsViewModel';
 import { boardSections, getBoardSectionMeta, type BoardSection } from '../../lib/board-navigation';
@@ -12,11 +12,14 @@ import { OperationsStrip } from './operations-strip';
 import { Button } from '../ui/button';
 import { Field, Input } from '../ui/field';
 import { UseNowDialog } from './use-now-dialog';
+import { UsageRecordsPanel } from './usage-records-panel';
 
 const sectionIcons = {
   board: LayoutDashboard,
   accounts: Settings,
   groups: UsersRound,
+  projects: FolderOpen,
+  records: History,
 } satisfies Record<BoardSection, React.FC<{ size?: number; className?: string }>>;
 
 const primarySections = boardSections.filter((section) => section.id !== 'accounts');
@@ -77,7 +80,7 @@ export function AccountBoardPage() {
 
   return (
     <div className="min-h-dvh bg-[#F6F7F9] text-[#202329] lg:h-screen lg:min-h-0 lg:overflow-hidden">
-      <div className="relative mx-auto flex w-full max-w-[1760px] gap-4 px-3 py-3 pb-6 sm:px-4 sm:py-4 lg:h-full lg:px-5 lg:pb-4">
+      <div className="relative mx-auto flex w-full max-w-[1440px] gap-4 px-3 py-3 pb-6 sm:px-4 sm:py-4 lg:h-full lg:px-4 lg:pb-4 xl:px-5">
         <aside className="hidden w-[76px] shrink-0 lg:block">
           <div className="sticky top-4 flex h-[calc(100vh-2rem)] flex-col items-center rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] p-3 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#1C2430] text-sm font-semibold text-white">AM</div>
@@ -146,7 +149,7 @@ export function AccountBoardPage() {
             </nav>
           </div>
 
-          <section className={cn('min-h-0 flex-1', ['board', 'groups'].includes(activeSection) ? 'flex flex-col gap-3 overflow-hidden sm:gap-4' : 'overflow-y-auto overflow-x-hidden pr-1')}>
+          <section className={cn('min-h-0 flex-1', ['board', 'groups', 'records'].includes(activeSection) ? 'flex flex-col gap-3 overflow-hidden sm:gap-4' : 'overflow-y-auto overflow-x-hidden pr-1')}>
             {activeSection === 'board' ? (
               model.isLoading ? (
                 <BoardLoadingState />
@@ -174,6 +177,8 @@ export function AccountBoardPage() {
             ) : null}
             {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} onDeveloperTap={handleDeveloperTap} /> : null}
             {activeSection === 'groups' ? <MemberGroupsPanel developerMode={developerMode} model={model} /> : null}
+            {activeSection === 'projects' ? <ProjectsPanel model={model} /> : null}
+            {activeSection === 'records' ? <UsageRecordsPanel now={model.now} view={model.recordsView} /> : null}
           </section>
         </main>
       </div>
@@ -458,6 +463,40 @@ function SiteSettingsPanel({ developerMode, model, onDeveloperTap }: { developer
 
       {developerMode ? <AccountEditorSection model={model} /> : null}
     </div>
+  );
+}
+
+function ProjectsPanel({ model }: { model: BoardModel }) {
+  const projectRows = useMemo(
+    () =>
+      model.projects.map((project) => ({
+        name: project,
+        current: model.view.allRows.filter((row) => row.current?.projectName === project).length,
+        next: model.view.allRows.filter((row) => row.next?.projectName === project).length,
+      })),
+    [model.projects, model.view.allRows],
+  );
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
+      <div className="flex items-center justify-between border-b border-[#E6EAF0] bg-[#FCFDFE] px-5 py-4">
+        <h2 className="text-base font-semibold text-[#171A1F]">项目列表</h2>
+        <span className="font-mono text-sm tabular-nums text-[#667085]">{projectRows.length} 个项目</span>
+      </div>
+      {projectRows.length ? (
+        <ul className="divide-y divide-[#EEF2F6]">
+          {projectRows.map((project) => (
+            <li className="grid min-h-[58px] gap-3 px-5 py-3 sm:grid-cols-[minmax(0,1fr)_80px_80px] sm:items-center" key={project.name}>
+              <span className="min-w-0 truncate text-sm font-medium text-[#344154]">{project.name}</span>
+              <span className="font-mono text-sm tabular-nums text-[#667085] sm:text-right">占用 {project.current}</span>
+              <span className="font-mono text-sm tabular-nums text-[#667085] sm:text-right">预约 {project.next}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="px-5 py-10 text-center text-sm text-[#667085]">预约或使用账号时填写项目。</div>
+      )}
+    </section>
   );
 }
 

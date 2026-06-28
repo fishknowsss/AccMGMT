@@ -24,6 +24,18 @@ describe('account board architecture', () => {
     expect(accountBoardSource).not.toContain('删除项目');
   });
 
+  it('keeps projects and usage records available from navigation without project editing controls', () => {
+    expect(accountBoardSource).toContain("projects: FolderOpen");
+    expect(accountBoardSource).toContain("records: History");
+    expect(accountBoardSource).toContain("activeSection === 'projects'");
+    expect(accountBoardSource).toContain("activeSection === 'records'");
+    expect(accountBoardSource).toContain("import { UsageRecordsPanel } from './usage-records-panel';");
+    expect(accountBoardSource).toContain('function ProjectsPanel');
+    expect(accountBoardSource).not.toContain('function ProjectCreator');
+    expect(accountBoardSource).not.toContain('renameProject');
+    expect(accountBoardSource).not.toContain('deleteProject');
+  });
+
   it('keeps group names on one line and lets member names wrap', () => {
     expect(accountBoardSource).toContain('whitespace-nowrap');
     expect(accountBoardSource).toContain('break-words');
@@ -46,7 +58,7 @@ describe('account board architecture', () => {
 
   it('keeps page chrome outside section scrolling on desktop', () => {
     expect(accountBoardSource).toContain('<main className="flex min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:gap-4 lg:min-h-0">');
-    expect(accountBoardSource).toContain("['board', 'groups'].includes(activeSection) ? 'flex flex-col gap-3 overflow-hidden sm:gap-4' : 'overflow-y-auto overflow-x-hidden pr-1'");
+    expect(accountBoardSource).toContain("['board', 'groups', 'records'].includes(activeSection) ? 'flex flex-col gap-3 overflow-hidden sm:gap-4' : 'overflow-y-auto overflow-x-hidden pr-1'");
     expect(accountBoardSource).not.toContain("activeSection === 'accounts' || activeSection === 'projects') ? 'lg:min-h-0 lg:overflow-y-auto");
   });
 
@@ -58,11 +70,6 @@ describe('account board architecture', () => {
     expect(accountBoardSource).not.toContain('Pixverse 账号');
     expect(accountBoardSource).not.toContain('Pixverse 看板');
     expect(accountBoardSource).not.toContain('Runway Unlimited / $95');
-    expect(accountBoardSource).not.toContain("projects: FolderOpen");
-    expect(accountBoardSource).not.toContain("records: History");
-    expect(accountBoardSource).not.toContain("activeSection === 'projects'");
-    expect(accountBoardSource).not.toContain("activeSection === 'records'");
-    expect(accountBoardSource).not.toContain("import { UsageRecordsPanel } from './usage-records-panel';");
   });
 
   it('keeps account deletion inside account edit mode', () => {
