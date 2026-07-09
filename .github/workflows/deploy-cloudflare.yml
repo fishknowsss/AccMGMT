@@ -44,7 +44,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           for attempt in 1 2 3; do
-            if npx wrangler d1 migrations apply accmgmt --remote; then
+            if npm run cf:migrate; then
               exit 0
             fi
             if [ "$attempt" = "3" ]; then
@@ -59,4 +59,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name accmgmt --branch main
+          command: pages deploy dist --project-name accmgmt-pixverse --branch main
