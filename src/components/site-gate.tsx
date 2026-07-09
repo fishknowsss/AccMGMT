@@ -61,7 +61,7 @@ export function SiteGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="grid min-h-dvh place-items-center bg-[#F6F7F9] px-4 py-8 text-[#202329]">
+    <div className="grid min-h-dvh place-items-center bg-[#E7EBEF] px-4 py-8 text-[#202329]">
       <form className="w-full max-w-[420px] rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] p-6 shadow-[0_18px_46px_rgba(52,64,84,0.08)]" onSubmit={handleSubmit}>
         <div className="mb-6 flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-xl bg-[#1C2430] text-sm font-semibold text-white">AM</div>

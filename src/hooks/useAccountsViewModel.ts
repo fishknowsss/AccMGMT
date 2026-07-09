@@ -24,6 +24,7 @@ import {
   type AccountFiltersState,
   type Booking,
   type BookingDraft,
+  type Group,
   type GroupDraft,
   type User,
   type UserDraft,
@@ -41,8 +42,11 @@ import {
   deleteCloudProject,
   deleteCloudUser,
   getCloudSnapshot,
+  mapCloudGroup,
   releaseCloudBooking,
   renameCloudProject,
+  reorderCloudGroups,
+  reorderCloudProjects,
   updateCloudBooking,
   updateCloudAccount,
   updateCloudGroup,
@@ -76,6 +80,8 @@ export type BookingFormState = {
 
 export type AccountDraftState = {
   email: string;
+  password: string;
+  notes: string;
   label: string;
   renewalDate: string;
   isActive: boolean;
@@ -93,7 +99,7 @@ export function useAccountsViewModel() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [projectNames, setProjectNames] = useState<string[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [groups, setGroups] = useState<Array<{ id: string; name: string; concurrentLimit?: number; isActive?: boolean }>>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [filters, setFilters] = useState<AccountFiltersState>(emptyFilters);
   const [now, setNow] = useState(() => new Date());
 
@@ -456,7 +462,7 @@ export function useAccountsViewModel() {
     }
   }
 
-  async function updateAccount(accountId: string, next: Partial<Pick<Account, 'email' | 'label' | 'renewalDate' | 'isActive'>>) {
+  async function updateAccount(accountId: string, next: Partial<Pick<Account, 'email' | 'password' | 'notes' | 'label' | 'renewalDate' | 'isActive'>>) {
     const account = accounts.find((item) => item.id === accountId);
     if (!account) {
       setToast('账号不存在。');
@@ -465,6 +471,8 @@ export function useAccountsViewModel() {
 
     const payload: AccountWritePayload = {
       email: next.email?.trim() || account.email,
+      password: normalizeOptionalText(next.password, account.password),
+      notes: normalizeOptionalText(next.notes, account.notes),
       label: next.label?.trim() || account.label,
       renewalDate: next.renewalDate || account.renewalDate,
       isActive: next.isActive ?? account.isActive,
@@ -479,6 +487,8 @@ export function useAccountsViewModel() {
             ? {
                 ...item,
                 email: cloudAccount.email,
+                password: cloudAccount.password ?? null,
+                notes: cloudAccount.notes ?? null,
                 label: cloudAccount.label?.trim() || payload.label,
                 renewalDate: cloudAccount.renewalDate || payload.renewalDate,
                 isActive: cloudAccount.isActive,
@@ -514,6 +524,8 @@ export function useAccountsViewModel() {
       const cloudAccount = await createCloudAccount(
         {
           email,
+          password: normalizeOptionalText(draft.password),
+          notes: normalizeOptionalText(draft.notes),
           label,
           renewalDate: draft.renewalDate || todayDateInputValue(),
           isActive: draft.isActive,
@@ -525,6 +537,8 @@ export function useAccountsViewModel() {
         {
           id: cloudAccount.id,
           email: cloudAccount.email,
+          password: cloudAccount.password ?? null,
+          notes: cloudAccount.notes ?? null,
           label: cloudAccount.label?.trim() || label,
           renewalDate: cloudAccount.renewalDate || draft.renewalDate || todayDateInputValue(),
           isActive: cloudAccount.isActive,
@@ -562,7 +576,7 @@ export function useAccountsViewModel() {
 
     try {
       const cloudGroup = await createCloudGroup(validation.value);
-      setGroups((current) => [...current, { id: cloudGroup.id, name: cloudGroup.name, concurrentLimit: cloudGroup.concurrentLimit, isActive: cloudGroup.isActive }]);
+      setGroups((current) => [...current, mapCloudGroup(cloudGroup, current.length)]);
       setToast('小组已新增。');
       return { ok: true };
     } catch (error) {
@@ -580,12 +594,27 @@ export function useAccountsViewModel() {
       const cloudGroup = await updateCloudGroup(groupId, validation.value);
       setGroups((current) =>
         current.map((g) =>
-          g.id === groupId ? { ...g, name: cloudGroup.name, concurrentLimit: cloudGroup.concurrentLimit, isActive: cloudGroup.isActive } : g,
+          g.id === groupId ? { ...g, ...mapCloudGroup(cloudGroup, current.findIndex((item) => item.id === groupId)) } : g,
         ),
       );
       setToast('小组已更新。');
       return { ok: true };
     } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
+  }
+
+  async function reorderGroups(groupIds: string[]): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const nextGroups = reorderGroupList(groups, groupIds);
+    setGroups(nextGroups);
+
+    try {
+      const cloudGroups = await reorderCloudGroups(nextGroups.map((group) => group.id));
+      setGroups(cloudGroups.map(mapCloudGroup));
+      setToast('小组排序已更新。');
+      return { ok: true };
+    } catch (error) {
+      await refreshSnapshot();
       return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
     }
   }
@@ -728,6 +757,8 @@ export function useAccountsViewModel() {
   function getEmptyAccountDraft(): AccountDraftState {
     return {
       email: '',
+      password: '',
+      notes: '',
       label: getNextAccountLabel(accounts),
       renewalDate: todayDateInputValue(),
       isActive: true,
@@ -777,6 +808,21 @@ export function useAccountsViewModel() {
     }
   }
 
+  async function reorderProjects(orderedProjects: string[]): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const nextProjects = reorderStringList(projects, orderedProjects);
+    setProjectNames(nextProjects);
+
+    try {
+      const cloudProjects = await reorderCloudProjects(nextProjects);
+      setProjectNames(normalizeProjects(cloudProjects));
+      setToast('项目排序已更新。');
+      return { ok: true };
+    } catch (error) {
+      await refreshSnapshot();
+      return { ok: false, reason: error instanceof Error ? error.message : '操作失败' };
+    }
+  }
+
   return {
     accounts,
     users,
@@ -814,12 +860,14 @@ export function useAccountsViewModel() {
     deleteAccount,
     createGroup,
     updateGroup,
+    reorderGroups,
     deleteGroup,
     createUser,
     createUsersFromText,
     updateUser,
     deleteUser,
     createProject,
+    reorderProjects,
     renameProject,
     deleteProject,
     getEmptyAccountDraft,
@@ -866,6 +914,19 @@ function bookingDraftToCloudPayload(draft: BookingDraft, users: User[], groups: 
 
 function todayDateInputValue(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function normalizeOptionalText(value: string | null | undefined, fallback?: string | null): string | null {
+  if (value === undefined) {
+    return fallback ?? null;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
 
 function createUseNowForm(accountId: string, bookings: Booking[], now: Date, defaultUser: User, accountOptions: string[] = [accountId]): UseNowFormState {
@@ -943,7 +1004,37 @@ function createEditBookingForm(booking: Booking): BookingFormState {
 }
 
 function normalizeProjects(projects: string[]): string[] {
-  return Array.from(new Set(projects.map((project) => project.trim()).filter(Boolean))).sort();
+  const seen = new Set<string>();
+  const normalizedProjects: string[] = [];
+
+  for (const project of projects) {
+    const name = project.trim();
+    if (!name || seen.has(name)) {
+      continue;
+    }
+    seen.add(name);
+    normalizedProjects.push(name);
+  }
+
+  return normalizedProjects;
+}
+
+function reorderStringList(items: string[], orderedItems: string[]): string[] {
+  const nextItems = normalizeProjects(orderedItems);
+  const orderedSet = new Set(nextItems);
+  return normalizeProjects([...nextItems, ...items.filter((item) => !orderedSet.has(item))]);
+}
+
+function reorderGroupList(groups: Group[], groupIds: string[]): Group[] {
+  const ids = Array.from(new Set(groupIds));
+  const groupsById = new Map(groups.map((group) => [group.id, group]));
+  const orderedGroups = ids.map((id) => groupsById.get(id)).filter((group): group is Group => Boolean(group));
+  const remainingGroups = groups.filter((group) => !ids.includes(group.id));
+
+  return [...orderedGroups, ...remainingGroups].map((group, index) => ({
+    ...group,
+    sortOrder: index + 1,
+  }));
 }
 
 function readSavedCurrentUserId(): string {

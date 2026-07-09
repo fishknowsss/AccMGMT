@@ -2,7 +2,7 @@
 
 :root {
   color: #202329;
-  background: #f7f8fa;
+  background: #e7ebef;
   font-family:
     Inter,
     ui-sans-serif,
@@ -22,7 +22,7 @@
 }
 
 html {
-  background: #f7f8fa;
+  background: #e7ebef;
   min-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;

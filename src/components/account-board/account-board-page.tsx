@@ -1,5 +1,5 @@
-import { Check, ChevronDown, FolderOpen, History, LayoutDashboard, Settings, Trash2, UserRound, UsersRound } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Check, ChevronDown, FolderOpen, GripVertical, History, LayoutDashboard, Settings, Trash2, UserRound, UsersRound } from 'lucide-react';
+import { type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccountsViewModel, type AccountDraftState } from '../../hooks/useAccountsViewModel';
 import { boardSections, getBoardSectionMeta, type BoardSection } from '../../lib/board-navigation';
 import { advanceDeveloperSequence, advanceDeveloperTapCount, canUseDeveloperShortcut, normalizeDeveloperKey } from '../../lib/developer-mode';
@@ -25,7 +25,7 @@ const sectionIcons = {
 const primarySections = boardSections.filter((section) => section.id !== 'accounts');
 const settingsSection = boardSections.find((section) => section.id === 'accounts') ?? boardSections[1];
 export const groupEditorListClassName = 'grid max-h-[280px] divide-y divide-[#EEF2F6] overflow-y-auto';
-export const groupEditorRowClassName = 'grid min-h-[68px] gap-3 px-5 py-3 sm:grid-cols-[1fr_104px_90px_40px] sm:items-center';
+export const groupEditorRowClassName = 'grid min-h-[68px] gap-3 px-5 py-3 transition sm:grid-cols-[28px_minmax(0,1fr)_104px_90px_40px] sm:items-center';
 export const memberEditorListClassName = 'grid max-h-[360px] divide-y divide-[#EEF2F6] overflow-y-scroll [scrollbar-gutter:stable]';
 export const memberEditorRowClassName = 'grid min-h-[68px] items-center gap-x-3 gap-y-2 px-5 py-3 sm:grid-cols-[minmax(0,1fr)_160px_80px_40px]';
 
@@ -79,7 +79,7 @@ export function AccountBoardPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-[#F6F7F9] text-[#202329] lg:h-screen lg:min-h-0 lg:overflow-hidden">
+    <div className="min-h-dvh bg-[#E7EBEF] text-[#202329] lg:h-screen lg:min-h-0 lg:overflow-hidden">
       <div className="relative mx-auto flex w-full max-w-[1440px] gap-4 px-3 py-3 pb-6 sm:px-4 sm:py-4 lg:h-full lg:px-4 lg:pb-4 xl:px-5">
         <aside className="hidden w-[76px] shrink-0 lg:block">
           <div className="sticky top-4 flex h-[calc(100vh-2rem)] flex-col items-center rounded-2xl border border-[#DDE3EA] bg-[#FCFDFE] p-3 shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
@@ -177,7 +177,7 @@ export function AccountBoardPage() {
             ) : null}
             {activeSection === 'accounts' ? <SiteSettingsPanel developerMode={developerMode} model={model} onDeveloperTap={handleDeveloperTap} /> : null}
             {activeSection === 'groups' ? <MemberGroupsPanel developerMode={developerMode} model={model} /> : null}
-            {activeSection === 'projects' ? <ProjectsPanel model={model} /> : null}
+            {activeSection === 'projects' ? <ProjectsPanel developerMode={developerMode} model={model} /> : null}
             {activeSection === 'records' ? <UsageRecordsPanel now={model.now} view={model.recordsView} /> : null}
           </section>
         </main>
@@ -466,7 +466,7 @@ function SiteSettingsPanel({ developerMode, model, onDeveloperTap }: { developer
   );
 }
 
-function ProjectsPanel({ model }: { model: BoardModel }) {
+function ProjectsPanel({ developerMode, model }: { developerMode: boolean; model: BoardModel }) {
   const projectRows = useMemo(
     () =>
       model.projects.map((project) => ({
@@ -476,6 +476,11 @@ function ProjectsPanel({ model }: { model: BoardModel }) {
       })),
     [model.projects, model.view.allRows],
   );
+  const projectReorder = usePointerReorder({
+    items: model.projects,
+    onReorder: (nextProjects) => void model.reorderProjects(nextProjects),
+    rowAttribute: 'data-project-name',
+  });
 
   return (
     <section className="overflow-hidden rounded-2xl border border-[#DDE3EA] bg-white shadow-[0_14px_34px_rgba(52,64,84,0.06)]">
@@ -486,11 +491,14 @@ function ProjectsPanel({ model }: { model: BoardModel }) {
       {projectRows.length ? (
         <ul className="divide-y divide-[#EEF2F6]">
           {projectRows.map((project) => (
-            <li className="grid min-h-[58px] gap-3 px-5 py-3 sm:grid-cols-[minmax(0,1fr)_80px_80px] sm:items-center" key={project.name}>
-              <span className="min-w-0 truncate text-sm font-medium text-[#344154]">{project.name}</span>
-              <span className="font-mono text-sm tabular-nums text-[#667085] sm:text-right">占用 {project.current}</span>
-              <span className="font-mono text-sm tabular-nums text-[#667085] sm:text-right">预约 {project.next}</span>
-            </li>
+            <ProjectRow
+              developerMode={developerMode}
+              getHandleProps={projectReorder.getHandleProps}
+              isDragging={projectReorder.draggingItem === project.name}
+              isDropTarget={projectReorder.dropTargetItem === project.name && projectReorder.draggingItem !== project.name}
+              key={project.name}
+              project={project}
+            />
           ))}
         </ul>
       ) : (
@@ -498,6 +506,196 @@ function ProjectsPanel({ model }: { model: BoardModel }) {
       )}
     </section>
   );
+}
+
+function ProjectRow({
+  developerMode,
+  getHandleProps,
+  isDragging,
+  isDropTarget,
+  project,
+}: {
+  developerMode: boolean;
+  getHandleProps: (itemId: string) => ReorderHandleProps;
+  isDragging: boolean;
+  isDropTarget: boolean;
+  project: { name: string; current: number; next: number };
+}) {
+  return (
+    <li
+      data-project-name={project.name}
+      className={cn(
+        'grid min-h-[58px] gap-3 px-5 py-3 transition sm:items-center',
+        developerMode ? 'sm:grid-cols-[28px_minmax(0,1fr)_80px_80px]' : 'sm:grid-cols-[minmax(0,1fr)_80px_80px]',
+        isDragging && 'opacity-50',
+        isDropTarget && 'bg-[#F3F6FA]',
+      )}
+    >
+      {developerMode ? (
+        <button
+          aria-label="拖动排序"
+          className="flex h-9 w-7 cursor-grab touch-none select-none items-center justify-center rounded-md text-[#8A97A8] hover:bg-[#EEF2F6] active:cursor-grabbing"
+          type="button"
+          {...getHandleProps(project.name)}
+        >
+          <GripVertical size={16} />
+        </button>
+      ) : null}
+      <span className="min-w-0 truncate text-sm font-medium text-[#344154]">{project.name}</span>
+      <span className="font-mono text-sm tabular-nums text-[#667085] sm:text-right">占用 {project.current}</span>
+      <span className="font-mono text-sm tabular-nums text-[#667085] sm:text-right">预约 {project.next}</span>
+    </li>
+  );
+}
+
+type ReorderHandleProps = {
+  onKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>) => void;
+  onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+};
+
+type PointerReorderInput = {
+  items: string[];
+  onReorder: (nextItems: string[]) => void;
+  rowAttribute: string;
+};
+
+function usePointerReorder({ items, onReorder, rowAttribute }: PointerReorderInput) {
+  const [draggingItem, setDraggingItem] = useState<string | null>(null);
+  const [dropTargetItem, setDropTargetItem] = useState<string | null>(null);
+  const draggingItemRef = useRef<string | null>(null);
+  const dropTargetItemRef = useRef<string | null>(null);
+  const itemsRef = useRef(items);
+  const onReorderRef = useRef(onReorder);
+  const cleanupRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    onReorderRef.current = onReorder;
+  }, [onReorder]);
+
+  useEffect(() => () => cleanupRef.current(), []);
+
+  function beginReorder(itemId: string, event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    cleanupRef.current();
+
+    draggingItemRef.current = itemId;
+    dropTargetItemRef.current = itemId;
+    setDraggingItem(itemId);
+    setDropTargetItem(itemId);
+
+    const previousUserSelect = document.body.style.userSelect;
+    const previousCursor = document.body.style.cursor;
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
+
+    function cleanup() {
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
+      document.removeEventListener('pointercancel', handlePointerCancel);
+      document.body.style.userSelect = previousUserSelect;
+      document.body.style.cursor = previousCursor;
+    }
+
+    function handlePointerMove(pointerEvent: PointerEvent) {
+      if (!draggingItemRef.current) {
+        return;
+      }
+
+      pointerEvent.preventDefault();
+      const targetItem = getPointerTargetAttribute(pointerEvent.clientX, pointerEvent.clientY, rowAttribute);
+      if (!targetItem || targetItem === dropTargetItemRef.current) {
+        return;
+      }
+
+      dropTargetItemRef.current = targetItem;
+      setDropTargetItem(targetItem);
+    }
+
+    function handlePointerUp(pointerEvent: PointerEvent) {
+      pointerEvent.preventDefault();
+      const targetItem = getPointerTargetAttribute(pointerEvent.clientX, pointerEvent.clientY, rowAttribute) ?? dropTargetItemRef.current;
+      finishReorder(targetItem);
+    }
+
+    function handlePointerCancel() {
+      finishReorder(null);
+    }
+
+    cleanupRef.current = cleanup;
+    document.addEventListener('pointermove', handlePointerMove, { passive: false });
+    document.addEventListener('pointerup', handlePointerUp, { passive: false });
+    document.addEventListener('pointercancel', handlePointerCancel);
+  }
+
+  function finishReorder(targetItem: string | null) {
+    const draggedItem = draggingItemRef.current;
+    cleanupRef.current();
+    cleanupRef.current = () => {};
+
+    draggingItemRef.current = null;
+    dropTargetItemRef.current = null;
+    setDraggingItem(null);
+    setDropTargetItem(null);
+
+    if (!draggedItem || !targetItem || draggedItem === targetItem) {
+      return;
+    }
+
+    onReorderRef.current(reorderItems(itemsRef.current, draggedItem, targetItem));
+  }
+
+  function handleKeyboardReorder(itemId: string, event: ReactKeyboardEvent<HTMLButtonElement>) {
+    const direction = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
+    if (!direction) {
+      return;
+    }
+
+    const fromIndex = itemsRef.current.indexOf(itemId);
+    const targetItem = itemsRef.current[fromIndex + direction];
+    if (!targetItem) {
+      return;
+    }
+
+    event.preventDefault();
+    onReorderRef.current(reorderItems(itemsRef.current, itemId, targetItem));
+  }
+
+  return {
+    draggingItem,
+    dropTargetItem,
+    getHandleProps: (itemId: string): ReorderHandleProps => ({
+      onKeyDown: (event) => handleKeyboardReorder(itemId, event),
+      onPointerDown: (event) => beginReorder(itemId, event),
+    }),
+  };
+}
+
+export function reorderItems(items: string[], draggedItem: string, targetItem: string): string[] {
+  const fromIndex = items.indexOf(draggedItem);
+  const toIndex = items.indexOf(targetItem);
+  if (fromIndex < 0 || toIndex < 0) {
+    return items;
+  }
+
+  const nextItems = [...items];
+  const [movedItem] = nextItems.splice(fromIndex, 1);
+  nextItems.splice(toIndex, 0, movedItem);
+  return nextItems;
+}
+
+function getPointerTargetAttribute(clientX: number, clientY: number, attribute: string): string | null {
+  const target = document.elementFromPoint(clientX, clientY);
+  const row = target?.closest<HTMLElement>(`[${attribute}]`);
+  return row?.getAttribute(attribute) ?? null;
 }
 
 function AccountPoolSummary({ model, onDeveloperTap }: { model: BoardModel; onDeveloperTap: () => void }) {
@@ -528,9 +726,11 @@ function AccountEditorSection({ model }: { model: BoardModel }) {
         <span className="font-mono text-sm tabular-nums text-[#667085]">{model.accounts.length} 个账号</span>
       </div>
       <AccountCreator getDefaultDraft={model.getEmptyAccountDraft} onCreate={model.createAccount} />
-      <div className="hidden grid-cols-[110px_minmax(260px,1fr)_120px_40px] border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-3 text-sm font-medium text-[#667085] xl:grid">
+      <div className="hidden grid-cols-[88px_minmax(220px,1fr)_minmax(150px,0.65fr)_minmax(180px,0.8fr)_96px_40px] gap-3 border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-3 text-sm font-medium text-[#667085] xl:grid">
         <div>编号</div>
         <div>账号邮箱</div>
+        <div>密码</div>
+        <div>备注</div>
         <div>状态</div>
         <div />
       </div>
@@ -584,12 +784,15 @@ function AccountCreator({ getDefaultDraft, onCreate }: { getDefaultDraft: BoardM
 
   return (
     <section className="grid gap-4 border-b border-[#EEF2F6] bg-[#FAFBFC] px-5 py-4">
-      <div className="grid gap-3 xl:grid-cols-[110px_minmax(260px,1fr)_150px]">
+      <div className="grid gap-3 xl:grid-cols-[88px_minmax(220px,1fr)_minmax(150px,0.65fr)_96px]">
         <Field label="编号">
           <Input value={draft.label} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
         </Field>
         <Field label="账号邮箱">
           <Input value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
+        </Field>
+        <Field label="密码">
+          <Input autoComplete="off" value={draft.password} onChange={(event) => setDraft({ ...draft, password: event.target.value })} />
         </Field>
         <label className="flex items-end gap-2 pb-2 text-sm font-medium text-[#344154]">
           <input
@@ -601,6 +804,9 @@ function AccountCreator({ getDefaultDraft, onCreate }: { getDefaultDraft: BoardM
           启用账号
         </label>
       </div>
+      <Field label="备注">
+        <Input value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} />
+      </Field>
       {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36]">{error}</div> : null}
       <div className="flex justify-end gap-2">
         <Button
@@ -644,6 +850,8 @@ function ReadonlySetting({ label, value, onClick }: { label: string; value: stri
 function AccountEditor({ account, onDelete, onSave }: { account: Account; onDelete: BoardModel['deleteAccount']; onSave: BoardModel['updateAccount'] }) {
   const [draft, setDraft] = useState({
     email: account.email,
+    password: account.password ?? '',
+    notes: account.notes ?? '',
     label: account.label,
     renewalDate: account.renewalDate,
     isActive: account.isActive,
@@ -653,6 +861,8 @@ function AccountEditor({ account, onDelete, onSave }: { account: Account; onDele
   useEffect(() => {
     setDraft({
       email: account.email,
+      password: account.password ?? '',
+      notes: account.notes ?? '',
       label: account.label,
       renewalDate: account.renewalDate,
       isActive: account.isActive,
@@ -666,9 +876,19 @@ function AccountEditor({ account, onDelete, onSave }: { account: Account; onDele
   }
 
   return (
-    <article className="grid gap-3 px-5 py-4 xl:grid-cols-[110px_minmax(260px,1fr)_120px_40px] xl:items-center">
-      <Input value={draft.label} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
-      <Input value={draft.email} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
+    <article className="grid gap-3 px-5 py-4 xl:grid-cols-[88px_minmax(220px,1fr)_minmax(150px,0.65fr)_minmax(180px,0.8fr)_96px_40px] xl:items-center">
+      <AccountEditField label="编号">
+        <Input value={draft.label} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, label: event.target.value })} />
+      </AccountEditField>
+      <AccountEditField label="账号邮箱">
+        <Input value={draft.email} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
+      </AccountEditField>
+      <AccountEditField label="密码">
+        <Input autoComplete="off" value={draft.password} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, password: event.target.value })} />
+      </AccountEditField>
+      <AccountEditField label="备注">
+        <Input value={draft.notes} onBlur={() => saveAccountDraft(account, draft, onSave)} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} />
+      </AccountEditField>
       <label className="flex items-center gap-2 text-sm font-medium text-[#344154]">
         <input
           checked={draft.isActive}
@@ -685,17 +905,33 @@ function AccountEditor({ account, onDelete, onSave }: { account: Account; onDele
       <Button aria-label="删除账号" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={handleDelete} size="icon" type="button" variant="ghost">
         <Trash2 size={16} />
       </Button>
-      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] xl:col-span-5">{error}</div> : null}
+      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] xl:col-span-6">{error}</div> : null}
     </article>
   );
 }
 
 function saveAccountDraft(account: Account, draft: AccountDraftState, onSave: BoardModel['updateAccount']) {
-  if (account.label === draft.label && account.email === draft.email && account.renewalDate === draft.renewalDate && account.isActive === draft.isActive) {
+  if (
+    account.label === draft.label &&
+    account.email === draft.email &&
+    (account.password ?? '') === draft.password &&
+    (account.notes ?? '') === draft.notes &&
+    account.renewalDate === draft.renewalDate &&
+    account.isActive === draft.isActive
+  ) {
     return;
   }
 
   void onSave(account.id, draft);
+}
+
+function AccountEditField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="grid gap-1 text-sm font-medium text-[#3A404A]">
+      <span className="xl:hidden">{label}</span>
+      {children}
+    </label>
+  );
 }
 
 function MemberGroupsPanel({ developerMode, model }: { developerMode: boolean; model: BoardModel }) {
@@ -751,6 +987,12 @@ function GroupSummaryRow({ group, model }: { group: Group; model: BoardModel }) 
 function GroupEditorSection({ model }: { model: BoardModel }) {
   const [draft, setDraft] = useState({ name: '', concurrentLimit: defaultGroupConcurrentLimit, isActive: true });
   const [error, setError] = useState('');
+  const groupIds = useMemo(() => model.groups.map((group) => group.id), [model.groups]);
+  const groupReorder = usePointerReorder({
+    items: groupIds,
+    onReorder: (nextGroupIds) => void model.reorderGroups(nextGroupIds),
+    rowAttribute: 'data-group-id',
+  });
 
   async function handleCreate() {
     const result = await model.createGroup(draft);
@@ -789,14 +1031,36 @@ function GroupEditorSection({ model }: { model: BoardModel }) {
       </div>
       <div className={groupEditorListClassName}>
         {model.groups.map((group) => (
-          <GroupEditor group={group} key={group.id} onDelete={model.deleteGroup} onSave={model.updateGroup} />
+          <GroupEditor
+            getHandleProps={groupReorder.getHandleProps}
+            group={group}
+            isDragging={groupReorder.draggingItem === group.id}
+            isDropTarget={groupReorder.dropTargetItem === group.id && groupReorder.draggingItem !== group.id}
+            key={group.id}
+            onDelete={model.deleteGroup}
+            onSave={model.updateGroup}
+          />
         ))}
       </div>
     </section>
   );
 }
 
-function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: BoardModel['deleteGroup']; onSave: BoardModel['updateGroup'] }) {
+function GroupEditor({
+  getHandleProps,
+  group,
+  isDragging,
+  isDropTarget,
+  onDelete,
+  onSave,
+}: {
+  getHandleProps: (itemId: string) => ReorderHandleProps;
+  group: Group;
+  isDragging: boolean;
+  isDropTarget: boolean;
+  onDelete: BoardModel['deleteGroup'];
+  onSave: BoardModel['updateGroup'];
+}) {
   const isBoss = !Number.isFinite(getGroupConcurrentLimit(group.id, [group]));
   const [draft, setDraft] = useState({ name: group.name, concurrentLimit: group.concurrentLimit ?? defaultGroupConcurrentLimit, isActive: group.isActive !== false });
   const [error, setError] = useState('');
@@ -817,7 +1081,18 @@ function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: Boar
   }
 
   return (
-    <article className={groupEditorRowClassName}>
+    <article
+      data-group-id={group.id}
+      className={cn(groupEditorRowClassName, isDragging && 'opacity-50', isDropTarget && 'bg-[#F3F6FA]')}
+    >
+      <button
+        aria-label="拖动排序"
+        className="flex h-9 w-7 cursor-grab touch-none select-none items-center justify-center rounded-md text-[#8A97A8] hover:bg-[#EEF2F6] active:cursor-grabbing"
+        type="button"
+        {...getHandleProps(group.id)}
+      >
+        <GripVertical size={16} />
+      </button>
       <Input value={draft.name} onBlur={handleSave} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
       <Input
         disabled={isBoss}
@@ -844,7 +1119,7 @@ function GroupEditor({ group, onDelete, onSave }: { group: Group; onDelete: Boar
       <Button aria-label="删除小组" className="text-[#8D3F36] hover:bg-[#FCEDEA]" onClick={handleDelete} size="icon" type="button" variant="ghost">
         <Trash2 size={16} />
       </Button>
-      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] sm:col-span-4">{error}</div> : null}
+      {error ? <div className="rounded-lg border border-[#E5C1BD] bg-[#FCEDEA] px-3 py-2 text-sm text-[#8D3F36] sm:col-span-5">{error}</div> : null}
     </article>
   );
 }

@@ -24,13 +24,25 @@ describe('account board architecture', () => {
     expect(accountBoardSource).not.toContain('删除项目');
   });
 
-  it('keeps projects and usage records available from navigation without project editing controls', () => {
+  it('lets developers reorder groups by dragging group editor rows', () => {
+    expect(accountBoardSource).toContain('function usePointerReorder');
+    expect(accountBoardSource).toContain("document.addEventListener('pointermove'");
+    expect(accountBoardSource).toContain("document.addEventListener('pointerup'");
+    expect(accountBoardSource).toContain('onPointerDown');
+    expect(accountBoardSource).toContain('onKeyDown');
+    expect(accountBoardSource).toContain('model.reorderGroups');
+    expect(accountBoardSource).toContain('GripVertical');
+    expect(accountBoardSource).not.toContain('draggable');
+  });
+
+  it('lets developers reorder projects without adding project edit controls', () => {
     expect(accountBoardSource).toContain("projects: FolderOpen");
     expect(accountBoardSource).toContain("records: History");
-    expect(accountBoardSource).toContain("activeSection === 'projects'");
+    expect(accountBoardSource).toContain("activeSection === 'projects' ? <ProjectsPanel developerMode={developerMode} model={model} /> : null");
     expect(accountBoardSource).toContain("activeSection === 'records'");
     expect(accountBoardSource).toContain("import { UsageRecordsPanel } from './usage-records-panel';");
     expect(accountBoardSource).toContain('function ProjectsPanel');
+    expect(accountBoardSource).toContain('model.reorderProjects');
     expect(accountBoardSource).not.toContain('function ProjectCreator');
     expect(accountBoardSource).not.toContain('renameProject');
     expect(accountBoardSource).not.toContain('deleteProject');
@@ -76,6 +88,13 @@ describe('account board architecture', () => {
     expect(accountBoardSource).toContain('<AccountEditor account={account} key={account.id} onDelete={model.deleteAccount} onSave={model.updateAccount} />');
     expect(accountBoardSource).toContain("function AccountEditor({ account, onDelete, onSave }");
     expect(accountBoardSource).toContain('删除账号');
+  });
+
+  it('lets edit mode maintain account password and notes', () => {
+    expect(accountBoardSource).toContain('Field label="密码"');
+    expect(accountBoardSource).toContain('Field label="备注"');
+    expect(accountBoardSource).toContain('account.password ??');
+    expect(accountBoardSource).toContain('account.notes ??');
   });
 
   it('does not show renewal management in the Pixverse UI', () => {

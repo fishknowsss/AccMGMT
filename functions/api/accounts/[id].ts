@@ -28,14 +28,15 @@ export const onRequestDelete: PagesFunction<Env> = async ({ env, params }) => {
 
 function normalizeAccountInput(
   body: unknown,
-): { ok: true; value: { email: string; password: string | null; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number } } | { ok: false; reason: string } {
+): { ok: true; value: { email: string; password: string | null; notes: string | null; label: string; renewalDate: string | null; isActive: boolean; sortOrder: number } } | { ok: false; reason: string } {
   if (!body || typeof body !== 'object') {
     return { ok: false, reason: '请填写账号信息' };
   }
 
   const data = body as Record<string, unknown>;
   const email = typeof data.email === 'string' ? data.email.trim() : '';
-  const password = typeof data.password === 'string' && data.password ? data.password : null;
+  const password = typeof data.password === 'string' && data.password.trim() ? data.password.trim() : null;
+  const notes = typeof data.notes === 'string' && data.notes.trim() ? data.notes.trim() : null;
   const label = typeof data.label === 'string' ? data.label.trim() : '';
   const renewalDate = typeof data.renewalDate === 'string' && data.renewalDate.trim() ? data.renewalDate.trim() : null;
   const isActive = typeof data.isActive === 'boolean' ? data.isActive : true;
@@ -49,5 +50,5 @@ function normalizeAccountInput(
     return { ok: false, reason: '请填写账号编号' };
   }
 
-  return { ok: true, value: { email, password, label, renewalDate, isActive, sortOrder } };
+  return { ok: true, value: { email, password, notes, label, renewalDate, isActive, sortOrder } };
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cancelCloudBooking, createCloudAccount, createCloudBooking, createCloudProject, deleteCloudAccount, mapCloudSnapshot, releaseCloudBooking, updateCloudBooking } from '../src/lib/runway-api';
+import { cancelCloudBooking, createCloudAccount, createCloudBooking, createCloudProject, deleteCloudAccount, mapCloudSnapshot, releaseCloudBooking, reorderCloudGroups, reorderCloudProjects, updateCloudAccount, updateCloudBooking } from '../src/lib/runway-api';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -13,6 +13,7 @@ describe('mapCloudSnapshot', () => {
           id: 'account-1',
           email: 'runway01@example.com',
           password: 'secret-value',
+          notes: '主力账号',
           label: 'R-01',
           renewalDate: '2026-05-20',
           isActive: true,
@@ -54,6 +55,7 @@ describe('mapCloudSnapshot', () => {
       id: 'account-1',
       label: 'R-01',
       password: 'secret-value',
+      notes: '主力账号',
       renewalDate: '2026-05-20',
       sortOrder: 1,
     });
@@ -124,7 +126,46 @@ describe('mapCloudSnapshot', () => {
       },
     });
 
-    expect(snapshot.projects).toEqual(['广告片', '新项目']);
+    expect(snapshot.projects).toEqual(['新项目', '广告片']);
+  });
+
+  it('preserves cloud project order in the board snapshot', () => {
+    const snapshot = mapCloudSnapshot({
+      accounts: [],
+      bookings: [],
+      users: [],
+      groups: [],
+      projects: ['直播片头', '品牌短片', '素材补帧'],
+      defaultUser: {
+        id: 'user-wang',
+        name: '小王',
+        groupId: 'group-a',
+      },
+    });
+
+    expect(snapshot.projects).toEqual(['直播片头', '品牌短片', '素材补帧']);
+  });
+
+  it('keeps cloud group sort order in the board snapshot', () => {
+    const snapshot = mapCloudSnapshot({
+      accounts: [],
+      bookings: [],
+      users: [],
+      groups: [
+        { id: 'group-b', name: 'B组', sortOrder: 2 },
+        { id: 'group-a', name: 'A组', sortOrder: 1 },
+      ],
+      defaultUser: {
+        id: 'user-wang',
+        name: '小王',
+        groupId: 'group-a',
+      },
+    });
+
+    expect(snapshot.groups).toEqual([
+      expect.objectContaining({ id: 'group-b', sortOrder: 2 }),
+      expect.objectContaining({ id: 'group-a', sortOrder: 1 }),
+    ]);
   });
 });
 
@@ -173,6 +214,53 @@ describe('cloud write headers', () => {
     await deleteCloudAccount('account-1');
 
     expect(fetch).toHaveBeenCalledWith('/api/accounts/account-1', { method: 'DELETE' });
+  });
+
+  it('writes account password and notes through the account endpoint', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          account: {
+            id: 'account-1',
+            email: 'runway01@example.com',
+            password: 'secret-value',
+            notes: '主力账号',
+            label: 'R-01',
+            renewalDate: '2026-05-20',
+            isActive: true,
+            sortOrder: 1,
+            createdAt: '2026-05-09T00:00:00.000Z',
+          },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    await updateCloudAccount('account-1', {
+      email: 'runway01@example.com',
+      password: 'secret-value',
+      notes: '主力账号',
+      label: 'R-01',
+      renewalDate: '2026-05-20',
+      isActive: true,
+      sortOrder: 1,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/accounts/account-1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({
+          email: 'runway01@example.com',
+          password: 'secret-value',
+          notes: '主力账号',
+          label: 'R-01',
+          renewalDate: '2026-05-20',
+          isActive: true,
+          sortOrder: 1,
+        }),
+      }),
+    );
   });
 
   it('does not send the operator pin for daily booking operations', async () => {
@@ -318,5 +406,53 @@ describe('cloud write headers', () => {
     );
     const headers = (fetchMock.mock.calls[0]?.[1] as RequestInit | undefined)?.headers as Record<string, string> | undefined;
     expect(headers?.['x-operator-pin']).toBeUndefined();
+  });
+
+  it('reorders groups through a dedicated endpoint', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          groups: [
+            { id: 'group-b', name: 'B组', sortOrder: 1 },
+            { id: 'group-a', name: 'A组', sortOrder: 2 },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+
+    await expect(reorderCloudGroups(['group-b', 'group-a'])).resolves.toEqual([
+      expect.objectContaining({ id: 'group-b', sortOrder: 1 }),
+      expect.objectContaining({ id: 'group-a', sortOrder: 2 }),
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/groups/reorder',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'content-type': 'application/json' }),
+        body: JSON.stringify({ groupIds: ['group-b', 'group-a'] }),
+      }),
+    );
+  });
+
+  it('reorders projects through a dedicated endpoint', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ projects: ['素材补帧', '品牌短片'] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    await expect(reorderCloudProjects(['素材补帧', '品牌短片'])).resolves.toEqual(['素材补帧', '品牌短片']);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/projects/reorder',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ 'content-type': 'application/json' }),
+        body: JSON.stringify({ projects: ['素材补帧', '品牌短片'] }),
+      }),
+    );
   });
 });

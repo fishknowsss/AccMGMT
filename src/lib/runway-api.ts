@@ -4,6 +4,7 @@ export type CloudAccount = {
   id: string;
   email: string;
   password?: string | null;
+  notes?: string | null;
   label?: string | null;
   renewalDate: string | null;
   isActive: boolean;
@@ -34,6 +35,7 @@ export type CloudUser = {
 export type CloudGroup = {
   id: string;
   name: string;
+  sortOrder?: number | null;
   concurrentLimit?: number;
   isActive?: boolean;
 };
@@ -59,6 +61,7 @@ export type BoardSnapshot = {
 export type AccountWritePayload = {
   email: string;
   password?: string | null;
+  notes?: string | null;
   label: string;
   renewalDate: string;
   isActive: boolean;
@@ -76,7 +79,7 @@ export type BookingWritePayload = {
 
 export function mapCloudSnapshot(snapshot: CloudSnapshot): BoardSnapshot {
   const users: User[] = snapshot.users.map(mapCloudUser);
-  const groups: Group[] = snapshot.groups.map((g) => ({ id: g.id, name: g.name, concurrentLimit: g.concurrentLimit, isActive: g.isActive ?? true }));
+  const groups: Group[] = snapshot.groups.map(mapCloudGroup);
 
   // 不从 booking 文本字段合成虚拟小组/成员——
   // 合成对象只存在于本地状态，D1 没有对应记录，
@@ -88,6 +91,7 @@ export function mapCloudSnapshot(snapshot: CloudSnapshot): BoardSnapshot {
       id: account.id,
       email: account.email,
       password: account.password ?? null,
+      notes: account.notes ?? null,
       label: account.label?.trim() || `R-${String(index + 1).padStart(2, '0')}`,
       renewalDate: account.renewalDate || todayDateInputValue(),
       isActive: account.isActive,
@@ -120,6 +124,16 @@ export function mapCloudUser(u: CloudUser): User {
   };
 }
 
+export function mapCloudGroup(g: CloudGroup, index = 0): Group {
+  return {
+    id: g.id,
+    name: g.name,
+    sortOrder: g.sortOrder ?? index + 1,
+    concurrentLimit: g.concurrentLimit,
+    isActive: g.isActive ?? true,
+  };
+}
+
 export async function getCloudSnapshot(baseSnapshot: BoardSnapshot): Promise<BoardSnapshot> {
   const response = await fetch('/api/accounts');
   if (!response.ok) {
@@ -131,7 +145,7 @@ export async function getCloudSnapshot(baseSnapshot: BoardSnapshot): Promise<Boa
     accounts: data.accounts,
     bookings: data.bookings,
     users: data.users ?? baseSnapshot.users.map((u) => ({ id: u.id, name: u.name, email: u.email ?? null, groupId: u.groupId })),
-    groups: data.groups ?? baseSnapshot.groups.map((g) => ({ id: g.id, name: g.name, concurrentLimit: g.concurrentLimit })),
+    groups: data.groups ?? baseSnapshot.groups.map((g) => ({ id: g.id, name: g.name, sortOrder: g.sortOrder, concurrentLimit: g.concurrentLimit, isActive: g.isActive })),
     projects: data.projects ?? baseSnapshot.projects,
     defaultUser: baseSnapshot.defaultUser,
   });
@@ -253,6 +267,15 @@ export async function deleteCloudGroup(groupId: string): Promise<void> {
   }
 }
 
+export async function reorderCloudGroups(groupIds: string[]): Promise<CloudGroup[]> {
+  const response = await fetch('/api/groups/reorder', {
+    method: 'POST',
+    headers: writeHeaders(),
+    body: JSON.stringify({ groupIds }),
+  });
+  return readSingleEntity<CloudGroup[]>(response, 'groups');
+}
+
 export async function renameCloudProject(oldName: string, newName: string): Promise<void> {
   const response = await fetch(`/api/projects/${encodeURIComponent(oldName)}`, {
     method: 'PATCH',
@@ -271,6 +294,15 @@ export async function deleteCloudProject(name: string): Promise<void> {
   }
 }
 
+export async function reorderCloudProjects(projects: string[]): Promise<string[]> {
+  const response = await fetch('/api/projects/reorder', {
+    method: 'POST',
+    headers: writeHeaders(),
+    body: JSON.stringify({ projects }),
+  });
+  return readSingleEntity<string[]>(response, 'projects');
+}
+
 function writeHeaders(): HeadersInit {
   return {
     'content-type': 'application/json',
@@ -284,7 +316,19 @@ function bookingWriteHeaders(): HeadersInit {
 }
 
 function normalizeProjects(projects: string[] | undefined, bookings: CloudBooking[]): string[] {
-  return Array.from(new Set([...(projects ?? []), ...bookings.map((booking) => booking.projectName)].map((project) => project.trim()).filter(Boolean))).sort();
+  const seen = new Set<string>();
+  const normalizedProjects: string[] = [];
+
+  for (const project of [...(projects ?? []), ...bookings.map((booking) => booking.projectName)]) {
+    const name = project.trim();
+    if (!name || seen.has(name)) {
+      continue;
+    }
+    seen.add(name);
+    normalizedProjects.push(name);
+  }
+
+  return normalizedProjects;
 }
 
 async function readCloudEntity<T extends 'account' | 'booking'>(

@@ -10,6 +10,7 @@ export type Group = {
   id: string;
   name: string;
   concurrentLimit: number;
+  sortOrder: number;
   isActive: boolean;
 };
 
@@ -17,6 +18,7 @@ export type Account = {
   id: string;
   email: string;
   password: string | null;
+  notes: string | null;
   label: string;
   renewalDate: string | null;
   isActive: boolean;

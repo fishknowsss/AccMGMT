@@ -2,6 +2,7 @@ export type Account = {
   id: string;
   email: string;
   password?: string | null;
+  notes?: string | null;
   label: string;
   renewalDate: string;
   isActive: boolean;
@@ -19,6 +20,7 @@ export type User = {
 export type Group = {
   id: string;
   name: string;
+  sortOrder?: number;
   concurrentLimit?: number;
   isActive?: boolean;
 };
