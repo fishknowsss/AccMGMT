@@ -7,7 +7,7 @@ export type AuthEnv = {
 };
 
 const sessionCookieName = 'accmgmt_session';
-const defaultSessionTtlSeconds = 60 * 60 * 12;
+const defaultSessionTtlSeconds = 60 * 60 * 24 * 400;
 
 export async function sha256Hex(value: string): Promise<string> {
   const bytes = new TextEncoder().encode(value);
@@ -29,10 +29,12 @@ export async function buildSessionCookie(env: AuthEnv, now = new Date(), secure 
   const timestamp = String(now.getTime());
   const signature = await signSessionValue(timestamp, env);
   const maxAge = getSessionTtlSeconds(env);
+  const expires = new Date(now.getTime() + maxAge * 1000).toUTCString();
   const parts = [
     `${sessionCookieName}=${timestamp}.${signature}`,
     'Path=/',
     `Max-Age=${maxAge}`,
+    `Expires=${expires}`,
     'HttpOnly',
     'SameSite=Lax',
   ];
@@ -45,7 +47,7 @@ export async function buildSessionCookie(env: AuthEnv, now = new Date(), secure 
 }
 
 export function buildClearSessionCookie(): string {
-  return `${sessionCookieName}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure`;
+  return `${sessionCookieName}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax; Secure`;
 }
 
 export async function isAuthorizedRequest(request: Request, env: AuthEnv, now = new Date()): Promise<boolean> {

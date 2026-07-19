@@ -4,7 +4,19 @@ import { json, readJson } from '../_lib/http';
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const authenticated = await isAuthorizedRequest(request, env);
-  return json({ authenticated }, { status: authenticated ? 200 : 401 });
+  if (!authenticated) {
+    return json({ authenticated: false }, { status: 401 });
+  }
+
+  const secure = new URL(request.url).protocol === 'https:';
+  return json(
+    { authenticated: true },
+    {
+      headers: {
+        'set-cookie': await buildSessionCookie(env, new Date(), secure),
+      },
+    },
+  );
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
