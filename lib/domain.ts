@@ -178,6 +178,29 @@ export function rangesOverlap(startA: string, endA: string, startB: string, endB
   return new Date(startA).getTime() < new Date(endB).getTime() && new Date(startB).getTime() < new Date(endA).getTime();
 }
 
+export function getPeakConcurrentBookings(bookings: Pick<Booking, 'startAt' | 'endAt'>[], slot: Pick<Booking, 'startAt' | 'endAt'>): number {
+  const start = new Date(slot.startAt).getTime();
+  const end = new Date(slot.endAt).getTime();
+  const events: [number, number][] = [];
+
+  for (const booking of bookings) {
+    const bookingStart = Math.max(start, new Date(booking.startAt).getTime());
+    const bookingEnd = Math.min(end, new Date(booking.endAt).getTime());
+    if (bookingStart < bookingEnd) {
+      events.push([bookingStart, 1], [bookingEnd, -1]);
+    }
+  }
+
+  events.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let concurrent = 0;
+  let peak = 0;
+  for (const [, change] of events) {
+    concurrent += change;
+    peak = Math.max(peak, concurrent);
+  }
+  return peak;
+}
+
 function containsTime(startAt: string, endAt: string, time: Date): boolean {
   const timestamp = time.getTime();
   return new Date(startAt).getTime() <= timestamp && timestamp < new Date(endAt).getTime();

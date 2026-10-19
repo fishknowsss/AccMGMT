@@ -57,22 +57,6 @@ function createFakeDb(input: { groups: GroupRow[]; bookings: BookingRow[] }): D1
             return rows.groups.find((row) => row.name === bound[0]) ?? null;
           }
 
-          if (sql.includes('COUNT(*) AS count') && sql.includes('group_name')) {
-            const ignoredId = sql.includes('id != ?1') ? String(bound[0]) : null;
-            const groupName = String(bound[ignoredId ? 1 : 0]);
-            const startAt = String(bound[ignoredId ? 2 : 1]);
-            const endAt = String(bound[ignoredId ? 3 : 2]);
-            const count = rows.bookings.filter(
-              (row) =>
-                row.id !== ignoredId &&
-                row.group_name === groupName &&
-                row.released_at === null &&
-                row.start_at < endAt &&
-                startAt < row.end_at,
-            ).length;
-            return { count };
-          }
-
           if (sql.includes('FROM bookings') && sql.includes('WHERE id = ?1')) {
             return rows.bookings.find((row) => row.id === bound[0]) ?? null;
           }
@@ -95,6 +79,15 @@ function createFakeDb(input: { groups: GroupRow[]; bookings: BookingRow[] }): D1
           return null;
         },
         async all() {
+          if (sql.includes('FROM bookings') && sql.includes('group_name')) {
+            const ignoredId = sql.includes('id != ?1') ? String(bound[0]) : null;
+            const groupName = String(bound[ignoredId ? 1 : 0]);
+            const startAt = String(bound[ignoredId ? 2 : 1]);
+            const endAt = String(bound[ignoredId ? 3 : 2]);
+            return { results: rows.bookings.filter((row) =>
+              row.id !== ignoredId && row.group_name === groupName && row.released_at === null && row.start_at < endAt && startAt < row.end_at,
+            ) };
+          }
           return { results: [] };
         },
         async run() {
@@ -137,6 +130,27 @@ const groups: GroupRow[] = [
 ];
 
 describe('D1 booking group concurrent limit', () => {
+  it.each(['create', 'update'] as const)('allows %s across consecutive bookings without exceeding the simultaneous limit', async (operation) => {
+    const repo = createRepository(createFakeDb({
+      groups,
+      bookings: [
+        booking({ id: 'first', account_id: 'account-1', start_at: '2026-05-09T09:00:00.000Z', end_at: '2026-05-09T12:00:00.000Z' }),
+        booking({ id: 'second', account_id: 'account-2', start_at: '2026-05-09T12:00:00.000Z', end_at: '2026-05-09T15:00:00.000Z' }),
+        booking({ id: 'editing', account_id: 'account-3', start_at: '2026-05-09T10:00:00.000Z', end_at: '2026-05-09T14:00:00.000Z', released_at: operation === 'create' ? '2026-05-09T08:00:00.000Z' : null }),
+      ],
+    }));
+    const draft = {
+      accountId: 'account-3', userName: '林三', groupName: 'A组', projectName: '短片',
+      startAt: '2026-05-09T10:00:00.000Z', endAt: '2026-05-09T14:00:00.000Z',
+    };
+
+    const result = operation === 'create'
+      ? await repo.createBooking(draft)
+      : await repo.updateFutureBooking('editing', draft, '2026-05-09T08:00:00.000Z');
+
+    expect(result?.accountId).toBe('account-3');
+  });
+
   it('rejects creating a booking when the group already has two overlapping accounts', async () => {
     const repo = createRepository(
       createFakeDb({

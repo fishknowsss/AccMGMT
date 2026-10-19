@@ -1,4 +1,5 @@
 import type { Account, Booking, BookingDraft, Group, User } from '../../lib/domain';
+import { getPeakConcurrentBookings } from '../../lib/domain';
 
 type AccountRow = {
   id: string;
@@ -149,13 +150,19 @@ export function createRepository(db: D1Database): D1Repository {
       await assertGroupConcurrentLimit(db, input);
 
       const id = crypto.randomUUID();
-      await db
+      const result = await db
         .prepare(
           `INSERT INTO bookings (id, account_id, user_name, group_name, project_name, start_at, end_at)
-           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
+           SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7
+           WHERE ${bookingWriteCondition(input, false)}`,
         )
         .bind(id, input.accountId, input.userName, input.groupName, input.projectName, input.startAt, input.endAt)
         .run();
+
+      if (getChangedRows(result) === 0) {
+        await assertGroupConcurrentLimit(db, input);
+        throw new Error('BOOKING_CONFLICT');
+      }
 
       const booking = await getBookingById(db, id);
       if (!booking) {
@@ -189,13 +196,19 @@ export function createRepository(db: D1Database): D1Repository {
         .prepare(
           `UPDATE bookings
            SET account_id = ?1, user_name = ?2, group_name = ?3, project_name = ?4, start_at = ?5, end_at = ?6
-           WHERE id = ?7 AND released_at IS NULL AND start_at > ?8`,
+           WHERE id = ?7 AND released_at IS NULL AND start_at > ?8
+             AND ${bookingWriteCondition(input, true)}`,
         )
         .bind(input.accountId, input.userName, input.groupName, input.projectName, input.startAt, input.endAt, id, now)
         .run();
 
       if (getChangedRows(result) === 0) {
-        return null;
+        const current = await getBookingById(db, id);
+        if (!current || current.releasedAt || current.startAt <= now) {
+          return null;
+        }
+        await assertGroupConcurrentLimit(db, input, id);
+        throw new Error('BOOKING_CONFLICT');
       }
 
       return getBookingById(db, id);
@@ -457,13 +470,46 @@ function mergeProjectNames(orderedProjects: string[], bookingProjects: string[])
   return projects;
 }
 
+function bookingWriteCondition(input: BookingDraft, editing: boolean): string {
+  const accountId = editing ? '?1' : '?2';
+  const groupName = editing ? '?3' : '?4';
+  const startAt = editing ? '?5' : '?6';
+  const endAt = editing ? '?6' : '?7';
+  const ignoredId = editing ? '?7' : '?1';
+  const accountAvailable = `NOT EXISTS (
+    SELECT 1 FROM bookings
+    WHERE id != ${ignoredId} AND account_id = ${accountId} AND released_at IS NULL
+      AND start_at < ${endAt} AND ${startAt} < end_at
+  )`;
+  if (isBossGroupName(input.groupName)) return accountAvailable;
+
+  // Keep the final availability check inside the write's SQLite transaction.
+  return `${accountAvailable} AND COALESCE((
+    WITH overlapping AS (
+      SELECT start_at, end_at FROM bookings
+      WHERE id != ${ignoredId} AND group_name = ${groupName} AND released_at IS NULL
+        AND start_at < ${endAt} AND ${startAt} < end_at
+    ), events AS (
+      SELECT MAX(start_at, ${startAt}) AS at, 1 AS delta FROM overlapping
+      UNION ALL
+      SELECT MIN(end_at, ${endAt}) AS at, -1 AS delta FROM overlapping
+    ), usage AS (
+      SELECT SUM(delta) OVER (ORDER BY at, delta ROWS UNBOUNDED PRECEDING) AS concurrent FROM events
+    )
+    SELECT MAX(concurrent) FROM usage
+  ), 0) < COALESCE((
+    SELECT concurrent_limit FROM groups
+    WHERE name = ${groupName} AND concurrent_limit > 0 LIMIT 1
+  ), 2)`;
+}
+
 async function assertGroupConcurrentLimit(db: D1Database, input: BookingDraft, ignoredBookingId?: string): Promise<void> {
   if (isBossGroupName(input.groupName)) {
     return;
   }
 
   const limit = await getGroupConcurrentLimit(db, input.groupName);
-  const concurrent = await countOverlappingGroupBookings(db, input, ignoredBookingId);
+  const concurrent = await getGroupPeakConcurrency(db, input, ignoredBookingId);
 
   if (concurrent >= limit) {
     throw new Error('GROUP_CONCURRENT_LIMIT');
@@ -480,11 +526,11 @@ async function getGroupConcurrentLimit(db: D1Database, groupName: string): Promi
   return typeof limit === 'number' && Number.isFinite(limit) && limit > 0 ? limit : 2;
 }
 
-async function countOverlappingGroupBookings(db: D1Database, input: BookingDraft, ignoredBookingId?: string): Promise<number> {
-  const row = ignoredBookingId
+async function getGroupPeakConcurrency(db: D1Database, input: BookingDraft, ignoredBookingId?: string): Promise<number> {
+  const rows = ignoredBookingId
     ? await db
         .prepare(
-          `SELECT COUNT(*) AS count
+          `SELECT start_at, end_at
            FROM bookings
            WHERE id != ?1
              AND group_name = ?2
@@ -493,10 +539,10 @@ async function countOverlappingGroupBookings(db: D1Database, input: BookingDraft
              AND ?3 < end_at`,
         )
         .bind(ignoredBookingId, input.groupName, input.startAt, input.endAt)
-        .first<{ count: number }>()
+        .all<Pick<BookingRow, 'start_at' | 'end_at'>>()
     : await db
         .prepare(
-          `SELECT COUNT(*) AS count
+          `SELECT start_at, end_at
            FROM bookings
            WHERE group_name = ?1
              AND released_at IS NULL
@@ -504,9 +550,12 @@ async function countOverlappingGroupBookings(db: D1Database, input: BookingDraft
              AND ?2 < end_at`,
         )
         .bind(input.groupName, input.startAt, input.endAt)
-        .first<{ count: number }>();
+        .all<Pick<BookingRow, 'start_at' | 'end_at'>>();
 
-  return row?.count ?? 0;
+  return getPeakConcurrentBookings(
+    rows.results.map((row) => ({ startAt: row.start_at, endAt: row.end_at })),
+    input,
+  );
 }
 
 function isBossGroupName(groupName: string): boolean {

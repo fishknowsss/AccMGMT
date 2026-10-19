@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "local": "node scripts/open-preview.mjs",
     "test": "vitest run",
-    "lint": "tsc --noEmit",
+    "lint": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "cf:dev": "npm run build && wrangler pages dev dist --d1 DB=accmgmt-pixverse",
     "cf:migrate:local": "wrangler d1 migrations apply accmgmt-pixverse --local",
     "cf:migrate": "wrangler d1 migrations apply accmgmt-pixverse --remote",

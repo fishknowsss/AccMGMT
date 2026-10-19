@@ -1,3 +1,5 @@
+import { getPeakConcurrentBookings } from '../../lib/domain';
+
 export type Account = {
   id: string;
   email: string;
@@ -246,14 +248,18 @@ export function validateBookingDraft(draft: BookingDraft, context: BookingValida
 
   const groupLimit = getGroupConcurrentLimit(value.groupId, context.groups ?? []);
   if (Number.isFinite(groupLimit)) {
-    const concurrentCount = context.bookings.filter(
+    const groupBookings = context.bookings.filter(
       (b) =>
         b.groupId === value.groupId &&
         b.id !== context.editingBookingId &&
         b.status === 'confirmed' &&
         timestamp(b.startTime) < timestamp(value.endTime) &&
         timestamp(b.endTime) > timestamp(value.startTime),
-    ).length;
+    );
+    const concurrentCount = getPeakConcurrentBookings(
+      groupBookings.map((booking) => ({ startAt: booking.startTime, endAt: booking.endTime })),
+      { startAt: value.startTime, endAt: value.endTime },
+    );
 
     if (concurrentCount >= groupLimit) {
       return { ok: false, reason: `该小组在此时间段最多可使用 ${groupLimit} 个账号` };

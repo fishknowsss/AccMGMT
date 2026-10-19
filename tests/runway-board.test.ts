@@ -141,6 +141,24 @@ describe('findBookingConflict', () => {
 });
 
 describe('validateBookingDraft', () => {
+  it('allows a long booking across consecutive group bookings that never overlap each other', () => {
+    const result = validateBookingDraft(
+      {
+        accountId: 'account-3', userId: 'user-1', groupId: 'group-a', projectName: '广告片',
+        startTime: '2026-05-09T10:00:00.000Z', endTime: '2026-05-09T14:00:00.000Z',
+      },
+      {
+        bookings: [
+          booking({ id: 'first', accountId: 'account-1', startTime: '2026-05-09T09:00:00.000Z', endTime: '2026-05-09T12:00:00.000Z' }),
+          booking({ id: 'second', accountId: 'account-2', startTime: '2026-05-09T12:00:00.000Z', endTime: '2026-05-09T15:00:00.000Z' }),
+        ],
+        mode: 'reserve', now, groups,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
   it('returns a validation error instead of throwing when local time input is empty', () => {
     const result = validateBookingDraft(
       {
